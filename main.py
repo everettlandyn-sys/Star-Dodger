@@ -122,7 +122,7 @@ class StarDodger(Widget):
             bold=True,
         )
 
-    def show_home(self):
+    def show_home(self, *args):
         self.screen = "home"
         self.game_started = False
         Clock.unschedule(self.update)
