@@ -417,6 +417,7 @@ class StarDodger(FloatLayout):
 
         boss_text = f"     BOSS {self.boss[2]}/{self.boss[3]}" if self.boss else ""
         self.info.text = f"SECTOR {self.level}     SCORE {self.score}     ♥ {self.lives}{boss_text}"
+        self.hint.text = "⚠  BOSS INCOMING!" if self.boss_notice > 0 else ("DEFEAT THE BOSS!" if self.boss else "DODGE METEORS • COLLECT STARS")
         self.redraw()
         return True
 
