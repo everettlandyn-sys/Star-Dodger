@@ -5,10 +5,10 @@ from kivy.clock import Clock
 from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle, Triangle
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.widget import Widget
+from kivy.uix.floatlayout import FloatLayout
 
 
-class StarDodger(Widget):
+class StarDodger(FloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.score = 0
