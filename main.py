@@ -521,8 +521,6 @@ class StarDodger(FloatLayout):
                     Ellipse(pos=(self.x + x * w - particle_size, self.y + y * h - particle_size),
                             size=(particle_size * 2, particle_size * 2))
 
-                for mx, my, scale, fall_speed in self.asteroids:
-
                 for sx, sy in self.stars:
                     x, y = self.x + sx * w, self.y + sy * h
                     Color(1, 0.78, 0.12, 0.2)
