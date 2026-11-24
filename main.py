@@ -18,6 +18,11 @@ class StarDodger(FloatLayout):
         self.asteroids = []
         self.stars = []
         self.particles = []
+        self.bullets = []
+        self.boss_shots = []
+        self.boss = None
+        self.shot_time = 0.0
+        self.boss_notice = 0.0
         self.level = 1
         self.level_time = 0.0
         self.score_time = 0.0
@@ -174,6 +179,11 @@ class StarDodger(FloatLayout):
         self.asteroids.clear()
         self.stars.clear()
         self.particles.clear()
+        self.bullets.clear()
+        self.boss_shots.clear()
+        self.boss = None
+        self.shot_time = 0.0
+        self.boss_notice = 0.0
         self.level = 1
         self.level_time = 0.0
         self.score_time = 0.0
@@ -301,6 +311,11 @@ class StarDodger(FloatLayout):
             self.level += 1
             self.score += 25
             self.shower_time = 4.5
+            if self.level % 5 == 0 and self.boss is None:
+                boss_hp = 12 + (self.level // 5 - 1) * 5
+                self.boss = [0.5, 0.80, boss_hp, boss_hp, 0.0, 0.0]
+                self.boss_notice = 3.0
+                self.boss_shots.clear()
 
         if self.score_time >= 1:
             points = int(self.score_time)
@@ -308,19 +323,68 @@ class StarDodger(FloatLayout):
             self.score_time -= points
 
         base_spawn = {"Easy": 50, "Normal": 38, "Hard": 29}[self.difficulty]
-        spawn_chance = max(10, base_spawn - self.level * 2 - (7 if self.shower_time > 0 else 0))
+        spawn_chance = max(8, base_spawn - self.level * 2 - (7 if self.shower_time > 0 else 0))
         base_speed = {"Easy": 0.25, "Normal": 0.32, "Hard": 0.40}[self.difficulty]
-        speed = min(0.78, base_speed + self.level * 0.016)
+        speed = min(0.95, base_speed + self.level * 0.022)
+        self.boss_notice = max(0.0, self.boss_notice - dt)
 
-        if randint(1, spawn_chance) == 1:
+        # Boss arenas replace normal meteor spawns while the boss is active.
+        if self.boss is None and randint(1, spawn_chance) == 1:
             self.asteroids.append([
                 uniform(0.06, 0.94), 1.08, uniform(0.75, 1.3),
                 speed * uniform(0.82, 1.2)
             ])
-        if self.shower_time > 0 and randint(1, 7) == 1:
+        if self.boss is None and self.shower_time > 0 and randint(1, 7) == 1:
             self.asteroids.append([uniform(0.06, 0.94), 1.08, uniform(0.65, 1.0), speed * 1.35])
-        if randint(1, max(25, 46 - self.level)) == 1:
+        if randint(1, max(18, 46 - self.level)) == 1:
             self.stars.append([uniform(0.06, 0.94), 1.06])
+
+        # Auto-fire gives the player a way to damage bosses without adding
+        # extra buttons that would crowd the mobile controls.
+        self.shot_time += dt
+        if self.shot_time >= 0.42:
+            self.shot_time = 0.0
+            self.bullets.append([self.player_x, 0.22])
+
+        for bullet in self.bullets[:]:
+            bullet[1] += dt * 1.05
+            if bullet[1] > 1.12:
+                self.bullets.remove(bullet)
+
+        if self.boss is not None:
+            boss = self.boss
+            boss[4] += dt
+            boss[0] = 0.5 + math.sin(boss[4] * 0.9) * 0.31
+            boss[5] += dt
+            if boss[5] >= max(0.48, 1.15 - self.level * 0.025):
+                boss[5] = 0.0
+                # Three-way fan attack; projectile speed rises with each boss.
+                shot_speed = 0.25 + self.level * 0.012
+                for offset in (-0.18, 0.0, 0.18):
+                    self.boss_shots.append([boss[0], boss[1] - 0.08, offset, -shot_speed])
+
+            for bullet in self.bullets[:]:
+                if abs(bullet[0] - boss[0]) < 0.13 and abs(bullet[1] - boss[1]) < 0.12:
+                    self.bullets.remove(bullet)
+                    boss[2] -= 1
+                    self.explode(boss[0] + uniform(-0.08, 0.08), boss[1], 5)
+                    if boss[2] <= 0:
+                        self.score += 250 + self.level * 20
+                        self.explode(boss[0], boss[1], 55)
+                        self.boss = None
+                        self.boss_shots.clear()
+                        self.shower_time = 3.0
+                        break
+
+        for shot in self.boss_shots[:]:
+            shot[0] += shot[2] * dt
+            shot[1] += shot[3] * dt
+            if shot[1] < -0.08 or shot[0] < -0.08 or shot[0] > 1.08:
+                self.boss_shots.remove(shot)
+            elif shot[1] < 0.19 and abs(shot[0] - self.player_x) < 0.065:
+                self.boss_shots.remove(shot)
+                self.lives -= 1
+                self.explode(shot[0], shot[1], 16)
 
         for meteor in self.asteroids[:]:
             meteor[1] -= dt * meteor[3]
@@ -351,7 +415,8 @@ class StarDodger(FloatLayout):
             self.game_over()
             return False
 
-        self.info.text = f"SECTOR {self.level}     SCORE {self.score}     ♥ {self.lives}"
+        boss_text = f"     BOSS {self.boss[2]}/{self.boss[3]}" if self.boss else ""
+        self.info.text = f"SECTOR {self.level}     SCORE {self.score}     ♥ {self.lives}{boss_text}"
         self.redraw()
         return True
 
@@ -394,6 +459,48 @@ class StarDodger(FloatLayout):
                 Color(1, 0.42, 0.12, 0.95)
                 Triangle(points=[px, py - 40, px - 8, py - 18, px + 8, py - 18])
 
+                for bx, by in self.bullets:
+                    x, y = self.x + bx * w, self.y + by * h
+                    Color(0.35, 0.95, 1, 1)
+                    Line(points=[x, y - 12, x, y + 12], width=2.2)
+
+                for sx, sy, vx, vy in self.boss_shots:
+                    x, y = self.x + sx * w, self.y + sy * h
+                    Color(1, 0.12, 0.38, 0.95)
+                    Ellipse(pos=(x - 7, y - 7), size=(14, 14))
+                    Color(1, 0.55, 0.72, 0.9)
+                    Ellipse(pos=(x - 3, y - 3), size=(6, 6))
+
+                if self.boss is not None:
+                    bx, by, hp, max_hp, phase, attack = self.boss
+                    x, y = self.x + bx * w, self.y + by * h
+                    radius = min(w, h) * 0.105
+                    Color(1, 0.08, 0.28, 0.18)
+                    Ellipse(pos=(x - radius * 1.55, y - radius * 1.35),
+                            size=(radius * 3.1, radius * 2.7))
+                    Color(0.45, 0.06, 0.18, 1)
+                    Ellipse(pos=(x - radius, y - radius * 0.7),
+                            size=(radius * 2, radius * 1.4))
+                    Color(1, 0.18, 0.28, 1)
+                    Triangle(points=[x, y + radius * 1.1,
+                                     x - radius * 1.25, y - radius * 0.45,
+                                     x + radius * 1.25, y - radius * 0.45])
+                    Color(1, 0.75, 0.2, 1)
+                    Ellipse(pos=(x - radius * 0.52, y - radius * 0.12),
+                            size=(radius * 0.34, radius * 0.25))
+                    Ellipse(pos=(x + radius * 0.18, y - radius * 0.12),
+                            size=(radius * 0.34, radius * 0.25))
+                    bar_w = w * 0.62
+                    bar_x = self.x + (w - bar_w) * 0.5
+                    bar_y = self.y + h * 0.91
+                    Color(0.2, 0.08, 0.14, 0.95)
+                    Rectangle(pos=(bar_x, bar_y), size=(bar_w, 9))
+                    Color(1, 0.12, 0.28, 1)
+                    Rectangle(pos=(bar_x, bar_y), size=(bar_w * max(0, hp) / max_hp, 9))
+                    if self.boss_notice > 0:
+                        Color(1, 0.25, 0.35, 1)
+                        # The banner text is handled by the HUD label below.
+
                 for mx, my, scale, fall_speed in self.asteroids:
                     x, y = self.x + mx * w, self.y + my * h
                     r = 15 * scale
@@ -413,6 +520,8 @@ class StarDodger(FloatLayout):
                     Color(1, 0.48, 0.12, alpha)
                     Ellipse(pos=(self.x + x * w - particle_size, self.y + y * h - particle_size),
                             size=(particle_size * 2, particle_size * 2))
+
+                for mx, my, scale, fall_speed in self.asteroids:
 
                 for sx, sy in self.stars:
                     x, y = self.x + sx * w, self.y + sy * h
