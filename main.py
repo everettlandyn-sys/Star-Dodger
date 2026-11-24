@@ -16,6 +16,10 @@ class StarDodger(FloatLayout):
         self.player_x = 0.5
         self.asteroids = []
         self.stars = []
+        self.particles = []
+        self.level = 1
+        self.level_time = 0.0
+        self.meteor_shower = 0.0
         self.game_started = False
         self.screen = "home"
         self.background_stars = [
@@ -186,6 +190,10 @@ class StarDodger(FloatLayout):
         self.player_x = 0.5
         self.asteroids.clear()
         self.stars.clear()
+        self.particles.clear()
+        self.level = 1
+        self.level_time = 0.0
+        self.meteor_shower = 0.0
         self.game_started = True
         self.screen = "game"
         self.title.opacity = 0
@@ -197,7 +205,7 @@ class StarDodger(FloatLayout):
         self.info.markup = False
         self.info.font_size = "17sp"
         self.info.pos_hint = {"center_x": 0.5, "top": 0.98}
-        self.info.text = "SCORE  0        ♥  3"
+        self.info.text = "SECTOR 1   SCORE 0   ♥ 3"
         self.hint.text = "DRAG LEFT OR RIGHT TO MOVE"
         self.hint.opacity = 1
         self.settings_button.opacity = 0
@@ -230,6 +238,18 @@ class StarDodger(FloatLayout):
         self.hint.text = "KEEP GOING. YOU CAN BEAT THAT SCORE!"
         self.redraw()
 
+    def create_explosion(self, x, y, count=14):
+        # Lightweight arcade particles: each particle stores position, velocity,
+        # lifetime, and visual size. Motion is integrated every frame.
+        for _ in range(count):
+            angle = uniform(0, 6.28318)
+            speed = uniform(0.10, 0.48)
+            self.particles.append([
+                x, y, __import__('math').cos(angle) * speed,
+                __import__('math').sin(angle) * speed,
+                uniform(0.22, 0.62), uniform(1.5, 4.5)
+            ])
+
     def _move_player(self, touch):
         if self.width > 0:
             self.player_x = max(0.06, min(0.94, (touch.x - self.x) / self.width))
@@ -251,21 +271,36 @@ class StarDodger(FloatLayout):
         if not self.game_started:
             return False
 
-        spawn_chance = {"Easy": 42, "Normal": 30, "Hard": 20}[self.difficulty]
-        asteroid_speed = {"Easy": 0.27, "Normal": 0.35, "Hard": 0.48}[self.difficulty]
-        star_chance = {"Easy": 36, "Normal": 42, "Hard": 52}[self.difficulty]
+        # New sectors arrive as the run continues; the challenge rises gradually.
+        self.level_time += dt
+        if self.level_time >= 22.0:
+            self.level_time -= 22.0
+            self.level += 1
+            self.score += 25
+            self.meteor_shower = 4.0
+        self.meteor_shower = max(0.0, self.meteor_shower - dt)
+
+        base_spawn = {"Easy": 48, "Normal": 36, "Hard": 27}[self.difficulty]
+        spawn_chance = max(9, base_spawn - self.level * 2 - (8 if self.meteor_shower else 0))
+        asteroid_speed = min(0.78, {"Easy": 0.25, "Normal": 0.32, "Hard": 0.40}[self.difficulty] + self.level * 0.018)
+        star_chance = max(24, 43 - self.level)
         if randint(1, spawn_chance) == 1:
-            self.asteroids.append([uniform(0.05, 0.95), 1.05])
+            size = uniform(0.72, 1.35)
+            self.asteroids.append([uniform(0.06, 0.94), 1.08, size, asteroid_speed * uniform(0.78, 1.28)])
+        if self.meteor_shower and randint(1, 8) == 1:
+            size = uniform(0.65, 1.0)
+            self.asteroids.append([uniform(0.06, 0.94), 1.08, size, asteroid_speed * 1.35])
         if randint(1, star_chance) == 1:
             self.stars.append([uniform(0.05, 0.95), 1.05])
 
         for asteroid in self.asteroids[:]:
-            asteroid[1] -= dt * asteroid_speed
-            if asteroid[1] < -0.05:
+            asteroid[1] -= dt * asteroid[3]
+            if asteroid[1] < -0.08:
                 self.asteroids.remove(asteroid)
-            elif abs(asteroid[0] - self.player_x) < 0.065 and asteroid[1] < 0.15:
+            elif abs(asteroid[0] - self.player_x) < 0.075 * asteroid[2] and asteroid[1] < 0.16:
                 self.asteroids.remove(asteroid)
                 self.lives -= 1
+                self.create_explosion(asteroid[0], asteroid[1], 18)
 
         for star in self.stars[:]:
             star[1] -= dt * 0.30
@@ -274,12 +309,20 @@ class StarDodger(FloatLayout):
             elif abs(star[0] - self.player_x) < 0.07 and star[1] < 0.15:
                 self.stars.remove(star)
                 self.score += 10
+                self.create_explosion(star[0], star[1], 8)
+
+        for particle in self.particles[:]:
+            particle[0] += particle[2] * dt
+            particle[1] += particle[3] * dt
+            particle[4] -= dt
+            if particle[4] <= 0:
+                self.particles.remove(particle)
 
         if self.lives <= 0:
             self.show_game_over()
             return False
 
-        self.info.text = f"{self.difficulty.upper()}   SCORE  {self.score}        ♥  {self.lives}"
+        self.info.text = f"SECTOR {self.level}   {self.difficulty.upper()}   SCORE {self.score}   ♥ {self.lives}"
         self.redraw()
         return True
 
@@ -337,15 +380,28 @@ class StarDodger(FloatLayout):
                 Color(1, 0.45, 0.15, 0.9)
                 Ellipse(pos=(px - 5, py - 26), size=(10, 17))
 
-                # Asteroids
-                for ax, ay in self.asteroids:
+                # Hot meteors with layered flame tails and glowing rocky cores.
+                for ax, ay, scale, fall_speed in self.asteroids:
                     x, y = self.x + ax * w, self.y + ay * h
-                    Color(1, 0.22, 0.30, 0.18)
-                    Ellipse(pos=(x - 21, y - 6), size=(42, 42))
-                    Color(0.88, 0.28, 0.32, 1)
-                    Ellipse(pos=(x - 14, y), size=(28, 28))
-                    Color(0.48, 0.12, 0.20, 1)
-                    Ellipse(pos=(x - 5, y + 13), size=(6, 6))
+                    radius = 15 * scale
+                    Color(1.0, 0.20, 0.035, 0.12)
+                    Ellipse(pos=(x - radius * 2.0, y - radius * 1.8), size=(radius * 4, radius * 4))
+                    Color(1.0, 0.25, 0.025, 0.75)
+                    Triangle(points=[x, y + radius * 2.8, x - radius * 0.75, y + radius * 0.15, x + radius * 0.75, y + radius * 0.15])
+                    Color(1.0, 0.68, 0.12, 0.9)
+                    Triangle(points=[x, y + radius * 2.0, x - radius * 0.42, y + radius * 0.10, x + radius * 0.42, y + radius * 0.10])
+                    Color(0.48, 0.24, 0.20, 1)
+                    Ellipse(pos=(x - radius, y - radius), size=(radius * 2, radius * 2))
+                    Color(0.95, 0.52, 0.30, 1)
+                    Ellipse(pos=(x - radius * 0.55, y + radius * 0.05), size=(radius * 0.48, radius * 0.40))
+                    Color(0.18, 0.08, 0.10, 1)
+                    Ellipse(pos=(x + radius * 0.10, y - radius * 0.25), size=(radius * 0.34, radius * 0.30))
+
+                # Explosion sparks and glowing debris.
+                for pxn, pyn, vx, vy, life, particle_size in self.particles:
+                    alpha = min(1.0, life * 2.2)
+                    Color(1.0, 0.48, 0.12, alpha)
+                    Ellipse(pos=(self.x + pxn * w - particle_size, self.y + pyn * h - particle_size), size=(particle_size * 2, particle_size * 2))
 
                 # Collectible stars
                 for sx, sy in self.stars:
