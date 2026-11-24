@@ -1,10 +1,10 @@
 [app]
-title = Star Dodger
+title = Star Dodger 2.0
 package.name = stardodger
 package.domain = org.everettlandyn
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
-version = 1.1
+version = 2.0
 requirements = python3,kivy
 orientation = portrait
 fullscreen = 1
