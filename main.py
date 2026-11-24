@@ -66,12 +66,46 @@ class StarDodger(Widget):
         self.retry_button.pos_hint = {"center_x": 0.5, "center_y": 0.43}
         self.retry_button.bind(on_press=self.start_game)
 
+        self.settings_button = self.make_button("⚙   SETTINGS", (0.62, 0.075))
+        self.settings_button.pos_hint = {"center_x": 0.5, "center_y": 0.36}
+        self.settings_button.background_color = (0.12, 0.22, 0.38, 1)
+        self.settings_button.color = (0.75, 0.9, 1, 1)
+        self.settings_button.bind(on_press=self.show_settings)
+
+        self.difficulty_label = Label(
+            text="SELECT DIFFICULTY",
+            font_size="16sp",
+            bold=True,
+            color=(0.55, 0.85, 1, 1),
+            size_hint=(0.9, None),
+            height=38,
+            pos_hint={"center_x": 0.5, "center_y": 0.55},
+        )
+        self.difficulty = "Normal"
+        self.difficulty_buttons = []
+        for name, y in [("EASY", 0.45), ("NORMAL", 0.35), ("HARD", 0.25)]:
+            button = self.make_button(name, (0.62, 0.075))
+            button.pos_hint = {"center_x": 0.5, "center_y": y}
+            button.bind(on_press=lambda instance, level=name.title(): self.set_difficulty(level))
+            self.difficulty_buttons.append(button)
+
+        self.back_button = self.make_button("←   BACK", (0.62, 0.075))
+        self.back_button.pos_hint = {"center_x": 0.5, "center_y": 0.15}
+        self.back_button.background_color = (0.12, 0.22, 0.38, 1)
+        self.back_button.color = (0.75, 0.9, 1, 1)
+        self.back_button.bind(on_press=self.show_home)
+
         self.add_widget(self.title)
         self.add_widget(self.subtitle)
         self.add_widget(self.info)
         self.add_widget(self.hint)
         self.add_widget(self.play_button)
         self.add_widget(self.retry_button)
+        self.add_widget(self.settings_button)
+        self.add_widget(self.difficulty_label)
+        for button in self.difficulty_buttons:
+            self.add_widget(button)
+        self.add_widget(self.back_button)
 
         self.show_home()
         self.bind(size=self.redraw, pos=self.redraw)
@@ -101,10 +135,49 @@ class StarDodger(Widget):
         self.play_button.disabled = False
         self.retry_button.opacity = 0
         self.retry_button.disabled = True
+        self.settings_button.opacity = 1
+        self.settings_button.disabled = False
+        self.difficulty_label.opacity = 0
+        for button in self.difficulty_buttons:
+            button.opacity = 0
+            button.disabled = True
+        self.back_button.opacity = 0
+        self.back_button.disabled = True
         self.title.opacity = 1
         self.subtitle.opacity = 1
         self.hint.opacity = 1
         self.redraw()
+
+    def show_settings(self, instance):
+        Clock.unschedule(self.update)
+        self.screen = "settings"
+        self.game_started = False
+        self.title.text = "[b]GAME[/b] [color=35d9ff]SETTINGS[/color]"
+        self.subtitle.text = "CHOOSE HOW CHALLENGING YOUR RUN WILL BE"
+        self.info.text = ""
+        self.hint.opacity = 0
+        self.play_button.opacity = 0
+        self.play_button.disabled = True
+        self.settings_button.opacity = 0
+        self.settings_button.disabled = True
+        self.retry_button.opacity = 0
+        self.retry_button.disabled = True
+        self.difficulty_label.opacity = 1
+        for button in self.difficulty_buttons:
+            button.opacity = 1
+            button.disabled = False
+            button.background_color = (
+                (0.08, 0.68, 0.9, 1) if button.text.title() == self.difficulty
+                else (0.12, 0.22, 0.38, 1)
+            )
+            button.color = (0.02, 0.06, 0.12, 1) if button.text.title() == self.difficulty else (0.8, 0.9, 1, 1)
+        self.back_button.opacity = 1
+        self.back_button.disabled = False
+        self.redraw()
+
+    def set_difficulty(self, level):
+        self.difficulty = level
+        self.show_settings(None)
 
     def start_game(self, instance):
         Clock.unschedule(self.update)
@@ -127,6 +200,14 @@ class StarDodger(Widget):
         self.info.text = "SCORE  0        ♥  3"
         self.hint.text = "DRAG LEFT OR RIGHT TO MOVE"
         self.hint.opacity = 1
+        self.settings_button.opacity = 0
+        self.settings_button.disabled = True
+        self.difficulty_label.opacity = 0
+        for button in self.difficulty_buttons:
+            button.opacity = 0
+            button.disabled = True
+        self.back_button.opacity = 0
+        self.back_button.disabled = True
         self.redraw()
         Clock.schedule_interval(self.update, 1 / 60)
 
@@ -170,13 +251,16 @@ class StarDodger(Widget):
         if not self.game_started:
             return False
 
-        if randint(1, 30) == 1:
+        spawn_chance = {"Easy": 42, "Normal": 30, "Hard": 20}[self.difficulty]
+        asteroid_speed = {"Easy": 0.27, "Normal": 0.35, "Hard": 0.48}[self.difficulty]
+        star_chance = {"Easy": 36, "Normal": 42, "Hard": 52}[self.difficulty]
+        if randint(1, spawn_chance) == 1:
             self.asteroids.append([uniform(0.05, 0.95), 1.05])
-        if randint(1, 42) == 1:
+        if randint(1, star_chance) == 1:
             self.stars.append([uniform(0.05, 0.95), 1.05])
 
         for asteroid in self.asteroids[:]:
-            asteroid[1] -= dt * 0.35
+            asteroid[1] -= dt * asteroid_speed
             if asteroid[1] < -0.05:
                 self.asteroids.remove(asteroid)
             elif abs(asteroid[0] - self.player_x) < 0.065 and asteroid[1] < 0.15:
@@ -195,7 +279,7 @@ class StarDodger(Widget):
             self.show_game_over()
             return False
 
-        self.info.text = f"SCORE  {self.score}        ♥  {self.lives}"
+        self.info.text = f"{self.difficulty.upper()}   SCORE  {self.score}        ♥  {self.lives}"
         self.redraw()
         return True
 
