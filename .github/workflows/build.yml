@@ -24,6 +24,9 @@ jobs:
         with:
           python-version: '3.14'
 
+      - name: Validate Python syntax
+        run: python -m py_compile main.py
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -48,5 +51,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Star-Dodger-APK
+          name: Star-Dodger-2.0-APK
           path: bin/*.apk
