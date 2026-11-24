@@ -121,6 +121,9 @@ class StarDodger(Widget):
         self.play_button.disabled = True
         self.retry_button.opacity = 0
         self.retry_button.disabled = True
+        self.info.markup = False
+        self.info.font_size = "17sp"
+        self.info.pos_hint = {"center_x": 0.5, "top": 0.98}
         self.info.text = "SCORE  0        ♥  3"
         self.hint.text = "DRAG LEFT OR RIGHT TO MOVE"
         self.hint.opacity = 1
@@ -230,7 +233,7 @@ class StarDodger(Widget):
                 Ellipse(pos=(cx - 27, cy - 27), size=(54, 54))
                 Color(0.35, 0.92, 1, 1)
                 Triangle(points=[cx, cy + 39, cx - 25, cy - 25,
-                                 cx, cy - 12, cx + 25, cy - 25])
+                                 cx + 25, cy - 25])
                 Color(0.88, 0.98, 1, 1)
                 Ellipse(pos=(cx - 6, cy + 1), size=(12, 12))
                 Color(0.10, 0.65, 1, 0.7)
@@ -244,7 +247,7 @@ class StarDodger(Widget):
                 Ellipse(pos=(px - 31, py - 17), size=(62, 62))
                 Color(0.12, 0.78, 1, 1)
                 Triangle(points=[px, py + 30, px - 23, py - 20,
-                                 px, py - 10, px + 23, py - 20])
+                                 px + 23, py - 20])
                 Color(0.82, 0.97, 1, 1)
                 Ellipse(pos=(px - 5, py + 3), size=(10, 10))
                 Color(1, 0.45, 0.15, 0.9)
