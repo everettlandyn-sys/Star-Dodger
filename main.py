@@ -393,11 +393,11 @@ class StarDodger(FloatLayout):
 
         if self.boss is None and randint(1, spawn_chance) == 1:
             self.asteroids.append([
-                uniform(0.06, 0.94), 1.08, uniform(0.75, 1.3),
-                speed * uniform(0.82, 1.2)
+                uniform(0.06, 0.94), 1.08, uniform(0.95, 1.5),
+                speed * uniform(0.82, 1.2), randint(0, 3), uniform(0, math.tau)
             ])
         if self.boss is None and self.shower_time > 0 and randint(1, 7) == 1:
-            self.asteroids.append([uniform(0.06, 0.94), 1.08, uniform(0.65, 1.0), speed * 1.35])
+            self.asteroids.append([uniform(0.06, 0.94), 1.08, uniform(0.85, 1.25), speed * 1.35, randint(0, 3), uniform(0, math.tau)])
         if randint(1, max(18, 46 - self.level)) == 1:
             self.stars.append([uniform(0.06, 0.94), 1.06])
 
@@ -743,6 +743,8 @@ class StarDodger(FloatLayout):
                 for mx, my, scale, fall_speed in self.asteroids:
                     x, y = self.x + mx * w, self.y + my * h
                     r = 15 * scale
+                    variant = meteor[4] if len(meteor) > 4 else 0
+                    rotation = meteor[5] if len(meteor) > 5 else 0.0
                     # A layered hot tail makes each falling meteor readable in motion.
                     Color(1, 0.12, 0.015, 0.13)
                     Triangle(points=[x, y + r * 4.0, x - r * 1.1, y + r * 0.2, x + r * 1.1, y + r * 0.2])
@@ -754,10 +756,33 @@ class StarDodger(FloatLayout):
                     Triangle(points=[x, y + r * 2.8, x - r * 0.78, y + r * 0.1, x + r * 0.78, y + r * 0.1])
                     Color(1, 0.68, 0.12, 0.95)
                     Triangle(points=[x, y + r * 2.0, x - r * 0.4, y + r * 0.1, x + r * 0.4, y + r * 0.1])
-                    Color(0.48, 0.24, 0.2, 1)
+                    rock_colors = ((0.48, 0.24, 0.2, 1), (0.34, 0.29, 0.27, 1),
+                                   (0.52, 0.19, 0.12, 1), (0.30, 0.25, 0.42, 1))
+                    rock = rock_colors[variant % len(rock_colors)]
+                    Color(*rock)
                     Ellipse(pos=(x - r, y - r), size=(r * 2, r * 2))
-                    Color(0.95, 0.52, 0.3, 1)
-                    Ellipse(pos=(x - r * 0.5, y + r * 0.05), size=(r * 0.45, r * 0.4))
+                    # Jagged rocky rim and angular surface plates.
+                    points = []
+                    for corner in range(10):
+                        angle = rotation + corner * math.tau / 10
+                        radius = r * (0.78 + 0.20 * ((corner + variant) % 3) / 2)
+                        points.extend((x + math.cos(angle) * radius, y + math.sin(angle) * radius))
+                    Color(0.78, 0.48, 0.32, 0.95)
+                    Line(points=points, close=True, width=1.5)
+                    Color(0.95, 0.52, 0.3, 0.9)
+                    Ellipse(pos=(x - r * 0.48, y + r * 0.08), size=(r * 0.42, r * 0.34))
+                    Color(0.12, 0.055, 0.045, 0.72)
+                    for crater_dx, crater_dy, crater_r in ((-0.35, 0.18, 0.13), (0.30, -0.25, 0.11), (0.08, 0.38, 0.08)):
+                        Ellipse(pos=(x + r * crater_dx - r * crater_r,
+                                     y + r * crater_dy - r * crater_r),
+                                size=(r * crater_r * 2, r * crater_r * 2))
+                    # Bright molten fissures give each meteor a distinct hot surface.
+                    Color(1, 0.68, 0.22, 0.95)
+                    Line(points=[x - r * 0.18, y + r * 0.62,
+                                 x + r * 0.02, y + r * 0.18,
+                                 x - r * 0.10, y - r * 0.12], width=1.6)
+                    Line(points=[x + r * 0.02, y + r * 0.18,
+                                 x + r * 0.48, y + r * 0.34], width=1.3)
 
                 # Expanding neon shock rings make impacts feel punchier.
                 for blast_x, blast_y, age in self.blasts:
@@ -784,11 +809,11 @@ class StarDodger(FloatLayout):
 
             # Neon angular HUD: three separate panels, glowing edges and ship-shaped lives.
             if self.screen == "game":
-                panel_y = self.y + h * 0.925
-                panel_h = max(48, h * 0.052)
+                panel_h = max(56, h * 0.065)
+                panel_y = self.y + h * 0.865
                 panel_w = w * 0.29
                 panel_xs = (self.x + w * 0.025, self.x + w * 0.355, self.x + w * 0.685)
-                font = max(13, min(20, w * 0.031))
+                font = max(15, min(22, w * 0.034))
                 for panel_x in panel_xs:
                     # Soft outer glow, dark glass fill, and clipped sci-fi corners.
                     Color(0.02, 0.38, 1, 0.16)
@@ -805,9 +830,10 @@ class StarDodger(FloatLayout):
                                  panel_x+panel_w-10, panel_y, panel_x+10, panel_y],
                          close=True, width=1.35)
 
+                # Extra-bright level readout, deliberately larger and centered in its own panel.
                 self.draw_canvas_text(f"LEVEL {self.level}",
-                                      panel_xs[0] + 10, panel_y + panel_h * 0.30,
-                                      font, (0.58, 0.91, 1, 1))
+                                      panel_xs[0] + 9, panel_y + panel_h * 0.29,
+                                      font + 2, (0.78, 0.97, 1, 1))
 
                 # Three tiny cyan ships communicate remaining lives at a glance.
                 life_cx = panel_xs[1] + panel_w * 0.5
