@@ -636,27 +636,71 @@ class StarDodger(FloatLayout):
                     bx, by, hp, max_hp, phase, attack = self.boss
                     x, y = self.x + bx * w, self.y + by * h
                     radius = min(w, h) * 0.105
-                    Color(1, 0.08, 0.28, 0.18)
-                    Ellipse(pos=(x - radius * 1.55, y - radius * 1.35),
-                            size=(radius * 3.1, radius * 2.7))
-                    Color(0.45, 0.06, 0.18, 1)
-                    Ellipse(pos=(x - radius, y - radius * 0.7),
-                            size=(radius * 2, radius * 1.4))
-                    Color(1, 0.18, 0.28, 1)
-                    Triangle(points=[x, y + radius * 1.1,
-                                     x - radius * 1.25, y - radius * 0.45,
-                                     x + radius * 1.25, y - radius * 0.45])
-                    Color(1, 0.75, 0.2, 1)
-                    Ellipse(pos=(x - radius * 0.52, y - radius * 0.12),
-                            size=(radius * 0.34, radius * 0.25))
-                    Ellipse(pos=(x + radius * 0.18, y - radius * 0.12),
-                            size=(radius * 0.34, radius * 0.25))
+                    pulse = 0.5 + 0.5 * math.sin(phase * 3.2)
+                    # Layered armored silhouette with swept side fins.
+                    Color(0.05, 0.72, 1.0, 0.13 + pulse * 0.10)
+                    Ellipse(pos=(x - radius * 1.72, y - radius * 1.42),
+                            size=(radius * 3.44, radius * 2.84))
+                    Color(0.035, 0.10, 0.24, 1)
+                    Triangle(points=[x - radius * 0.35, y + radius * 0.35,
+                                     x - radius * 1.65, y - radius * 0.38,
+                                     x - radius * 1.12, y - radius * 0.92])
+                    Triangle(points=[x + radius * 0.35, y + radius * 0.35,
+                                     x + radius * 1.65, y - radius * 0.38,
+                                     x + radius * 1.12, y - radius * 0.92])
+                    Color(0.10, 0.30, 0.58, 1)
+                    Triangle(points=[x, y + radius * 1.18,
+                                     x - radius * 1.28, y - radius * 0.48,
+                                     x + radius * 1.28, y - radius * 0.48])
+                    Color(0.22, 0.62, 0.86, 1)
+                    Triangle(points=[x, y + radius * 0.96,
+                                     x - radius * 0.78, y - radius * 0.42,
+                                     x + radius * 0.78, y - radius * 0.42])
+                    # Metallic edge lines and segmented armor plating.
+                    Color(0.55, 0.88, 1, 0.95)
+                    Line(points=[x, y + radius * 1.08,
+                                 x - radius * 1.45, y - radius * 0.42], width=1.8)
+                    Line(points=[x, y + radius * 1.08,
+                                 x + radius * 1.45, y - radius * 0.42], width=1.8)
+                    Color(0.015, 0.045, 0.12, 1)
+                    Triangle(points=[x, y + radius * 0.62,
+                                     x - radius * 0.40, y - radius * 0.42,
+                                     x + radius * 0.40, y - radius * 0.42])
+                    # Bright central energy reactor with a breathing halo.
+                    Color(0.05, 0.78, 1, 0.20 + pulse * 0.18)
+                    Ellipse(pos=(x - radius * 0.52, y - radius * 0.38),
+                            size=(radius * 1.04, radius * 1.04))
+                    Color(0.06, 0.72, 1, 1)
+                    Ellipse(pos=(x - radius * 0.29, y - radius * 0.18),
+                            size=(radius * 0.58, radius * 0.58))
+                    Color(0.82, 0.98, 1, 1)
+                    Ellipse(pos=(x - radius * 0.13, y - radius * 0.02),
+                            size=(radius * 0.26, radius * 0.26))
+                    # Twin luminous visor panels and small status lights.
+                    Color(1, 0.28, 0.36, 1)
+                    Line(points=[x - radius * 0.58, y + radius * 0.28,
+                                 x - radius * 0.16, y + radius * 0.18], width=2.4)
+                    Line(points=[x + radius * 0.58, y + radius * 0.28,
+                                 x + radius * 0.16, y + radius * 0.18], width=2.4)
+                    Color(0.25, 0.94, 1, 1)
+                    for light_offset in (-1.05, -0.82, 0.82, 1.05):
+                        Ellipse(pos=(x + radius * light_offset - 2,
+                                     y - radius * 0.48), size=(4, 4))
+                    # A rotating-looking energy shield ring, purely visual.
+                    Color(0.18, 0.82, 1, 0.34 + pulse * 0.22)
+                    Line(ellipse=(x - radius * 1.52, y - radius * 0.72,
+                                  radius * 3.04, radius * 1.52), width=1.4)
+                    Color(0.9, 0.98, 1, 0.8)
+                    Line(points=[x - radius * 1.34, y - radius * 0.65,
+                                 x - radius * 1.05, y - radius * 0.78], width=2)
+                    Line(points=[x + radius * 1.34, y - radius * 0.65,
+                                 x + radius * 1.05, y - radius * 0.78], width=2)
                     bar_w = w * 0.62
                     bar_x = self.x + (w - bar_w) * 0.5
                     bar_y = self.y + h * 0.91
                     Color(0.2, 0.08, 0.14, 0.95)
                     Rectangle(pos=(bar_x, bar_y), size=(bar_w, 9))
-                    Color(1, 0.12, 0.28, 1)
+                    Color(0.05, 0.72, 1, 1)
                     Rectangle(pos=(bar_x, bar_y), size=(bar_w * max(0, hp) / max_hp, 9))
                     if self.boss_notice > 0:
                         Color(1, 0.25, 0.35, 1)
