@@ -316,13 +316,16 @@ class StarDodger(FloatLayout):
             self.redraw()
 
     def on_touch_down(self, touch):
+        # Let buttons receive taps before the playfield handles steering.
+        if super().on_touch_down(touch):
+            return True
         if self.screen == "game":
             self.move_player_to(touch.x)
             return True
         if self.screen == "home":
             self.start_game()
             return True
-        return super().on_touch_down(touch)
+        return False
 
     def on_touch_move(self, touch):
         if self.screen == "game":
