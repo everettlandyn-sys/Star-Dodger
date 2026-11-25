@@ -44,6 +44,11 @@ class StarDodger(FloatLayout):
         self.info.text_size = (None, None)
         self.info.halign = "center"
         self.info.valign = "middle"
+
+        # Dedicated HUD labels keep lives, level, and score separate and readable.
+        self.hud_level = self.make_hud_label("[b]LEVEL 1[/b]", 0.17)
+        self.hud_lives = self.make_hud_label("[color=ff5875]♥ ♥ ♥[/color]", 0.50)
+        self.hud_score = self.make_hud_label("[b]SCORE 0[/b]", 0.83)
         self.hint = self.make_label("TAP PLAY TO START", 11, 0.035)
 
         self.play_button = self.make_button("▶  PLAY", (0.64, 0.085), 0.49)
@@ -78,6 +83,7 @@ class StarDodger(FloatLayout):
 
         for widget in (
             self.title, self.subtitle, self.info, self.hint,
+            self.hud_level, self.hud_lives, self.hud_score,
             self.play_button, self.settings_button, self.retry_button,
             self.home_button, self.difficulty_label, *self.difficulty_buttons,
             self.back_button, self.left_button, self.right_button,
@@ -95,6 +101,23 @@ class StarDodger(FloatLayout):
             pos_hint={"center_x": 0.5, "center_y": y},
             halign="center", valign="middle"
         )
+
+    def make_hud_label(self, text, center_x):
+        label = Label(
+            text=text, markup=True, font_size="17sp",
+            color=(0.94, 0.98, 1, 1),
+            size_hint=(0.32, None), height=42,
+            pos_hint={"center_x": center_x, "top": 0.985},
+            halign="center", valign="middle"
+        )
+        label.text_size = (None, None)
+        return label
+
+    def update_hud(self):
+        self.hud_level.text = f"[b]LEVEL {self.level}[/b]"
+        hearts = " ".join("♥" for _ in range(max(0, self.lives)))
+        self.hud_lives.text = f"[color=ff5875]{hearts or '0'}[/color]"
+        self.hud_score.text = f"[b]SCORE {self.score}[/b]"
 
     def make_button(self, text, size_hint, y, x=0.5):
         return Button(
@@ -128,6 +151,8 @@ class StarDodger(FloatLayout):
         self.set_visible(self.title, True)
         self.set_visible(self.subtitle, True)
         self.set_visible(self.info, True)
+        for hud in (self.hud_level, self.hud_lives, self.hud_score):
+            self.set_visible(hud, False)
         self.set_visible(self.hint, True)
         self.set_visible(self.play_button, True)
         self.set_visible(self.settings_button, True)
@@ -154,6 +179,8 @@ class StarDodger(FloatLayout):
         self.set_visible(self.title, True)
         self.set_visible(self.subtitle, True)
         self.set_visible(self.info, False)
+        for hud in (self.hud_level, self.hud_lives, self.hud_score):
+            self.set_visible(hud, False)
         self.set_visible(self.hint, False)
         self.set_visible(self.play_button, False)
         self.set_visible(self.settings_button, False)
@@ -202,8 +229,15 @@ class StarDodger(FloatLayout):
             self.set_visible(widget, False)
         for button in self.difficulty_buttons:
             self.set_visible(button, False)
-        self.set_visible(self.info, True)
+        self.set_visible(self.info, False)
+        for hud in (self.hud_level, self.hud_lives, self.hud_score):
+            self.set_visible(hud, True)
+        self.update_hud()
         self.set_visible(self.hint, True)
+        self.set_visible(self.info, False)
+        for hud in (self.hud_level, self.hud_lives, self.hud_score):
+            self.set_visible(hud, True)
+        self.update_hud()
         self.set_visible(self.left_button, True)
         self.set_visible(self.right_button, True)
         self.set_visible(self.pause_button, True)
@@ -227,6 +261,9 @@ class StarDodger(FloatLayout):
         self.set_visible(self.subtitle, True)
         self.subtitle.text = "TAKE A BREATHER"
         self.set_visible(self.info, True)
+        for hud in (self.hud_level, self.hud_lives, self.hud_score):
+            self.set_visible(hud, False)
+        self.info.text = f"LEVEL {self.level}       {self.lives} LIVES\\nSCORE {self.score}"
         self.set_visible(self.hint, False)
         self.set_visible(self.resume_button, True)
         self.set_visible(self.pause_home_button, True)
@@ -259,6 +296,8 @@ class StarDodger(FloatLayout):
         self.hint.text = "TRY AGAIN AND REACH THE NEXT SECTOR"
         for widget in (self.title, self.subtitle, self.info, self.hint):
             self.set_visible(widget, True)
+        for hud in (self.hud_level, self.hud_lives, self.hud_score):
+            self.set_visible(hud, False)
         self.set_visible(self.retry_button, True)
         self.set_visible(self.home_button, True)
         self.set_visible(self.play_button, False)
@@ -428,16 +467,25 @@ class StarDodger(FloatLayout):
         w, h = self.width, self.height
         if w <= 0 or h <= 0:
             return
+        # Each level cycles through a distinct space environment palette.
+        themes = [
+            ((0.012, 0.018, 0.065, 1), (0.035, 0.09, 0.19, 0.28), (0.12, 0.035, 0.20, 0.20), (0.58, 0.80, 1, 0.75)),
+            ((0.075, 0.012, 0.035, 1), (0.30, 0.045, 0.055, 0.30), (0.22, 0.025, 0.10, 0.24), (1, 0.42, 0.30, 0.85)),
+            ((0.008, 0.045, 0.085, 1), (0.025, 0.20, 0.30, 0.30), (0.025, 0.10, 0.22, 0.24), (0.35, 0.88, 1, 0.85)),
+            ((0.035, 0.008, 0.075, 1), (0.16, 0.035, 0.30, 0.32), (0.28, 0.025, 0.24, 0.22), (0.82, 0.52, 1, 0.85)),
+            ((0.008, 0.055, 0.035, 1), (0.025, 0.22, 0.12, 0.30), (0.08, 0.18, 0.045, 0.24), (0.48, 1, 0.65, 0.85)),
+        ]
+        bg, glow_a, glow_b, star_tint = themes[(max(1, self.level) - 1) % len(themes)]
         with self.canvas:
-            Color(0.012, 0.018, 0.065, 1)
+            Color(*bg)
             Rectangle(pos=self.pos, size=self.size)
-            Color(0.035, 0.09, 0.19, 0.25)
+            Color(*glow_a)
             Ellipse(pos=(self.x + w * 0.06, self.y + h * 0.48), size=(w * 0.9, h * 0.48))
-            Color(0.12, 0.035, 0.20, 0.16)
+            Color(*glow_b)
             Ellipse(pos=(self.x + w * 0.32, self.y + h * 0.1), size=(w * 0.8, h * 0.42))
 
             for sx, sy, radius in self.background_stars:
-                Color(0.58, 0.8, 1, 0.32 + radius * 0.14)
+                Color(star_tint[0], star_tint[1], star_tint[2], min(1, star_tint[3] * (0.45 + radius * 0.18)))
                 Ellipse(pos=(self.x + sx * w, self.y + sy * h), size=(radius, radius))
 
             if self.screen in ("home", "settings", "over", "paused"):
