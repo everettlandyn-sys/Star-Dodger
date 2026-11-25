@@ -36,8 +36,9 @@ class StarDodger(FloatLayout):
         self.best_score = 0
         self.background_stars = [
             (uniform(0.02, 0.98), uniform(0.02, 0.98), uniform(1.0, 2.8))
-            for _ in range(90)
+            for _ in range(150)
         ]
+        self.background_drift = 0.0
 
         self.title = self.make_label("[b]STAR[/b] [color=35d9ff]DODGER[/color]", 38, 0.77)
         self.title.markup = True
@@ -362,6 +363,7 @@ class StarDodger(FloatLayout):
         dt = min(dt, 0.05)
         self.level_time += dt
         self.score_time += dt
+        self.background_drift = (self.background_drift + dt * 0.018) % 1.0
         # Smooth, frame-rate-independent movement follows the player's finger.
         slide_factor = 1.0 - math.exp(-dt * 8.0)
         self.player_x += (self.player_target_x - self.player_x) * slide_factor
@@ -515,6 +517,15 @@ class StarDodger(FloatLayout):
             Ellipse(pos=(self.x + w * 0.06, self.y + h * 0.48), size=(w * 0.9, h * 0.48))
             Color(*glow_b)
             Ellipse(pos=(self.x + w * 0.32, self.y + h * 0.1), size=(w * 0.8, h * 0.42))
+            # Layered nebula clouds: overlapping soft color fields make each sector feel deeper.
+            nebula_shift = (max(1, self.level) - 1) % 5
+            nebula_x = self.x + w * (0.12 + nebula_shift * 0.13)
+            Color(star_tint[0], star_tint[1], star_tint[2], 0.10)
+            Ellipse(pos=(nebula_x - w * 0.22, self.y + h * 0.43), size=(w * 0.62, h * 0.20))
+            Color(glow_b[0], glow_b[1], glow_b[2], 0.16)
+            Ellipse(pos=(nebula_x + w * 0.05, self.y + h * 0.30), size=(w * 0.58, h * 0.18))
+            Color(glow_a[0], glow_a[1], glow_a[2], 0.13)
+            Ellipse(pos=(nebula_x - w * 0.30, self.y + h * 0.62), size=(w * 0.55, h * 0.13))
 
             # Retro pixel-art starfield: crisp square stars and occasional plus-shaped glints.
             pixel_colors = [
@@ -525,7 +536,8 @@ class StarDodger(FloatLayout):
             for index, (sx, sy, radius) in enumerate(self.background_stars):
                 tint = pixel_colors[index % len(pixel_colors)]
                 px = self.x + sx * w
-                py = self.y + sy * h
+                drift = self.background_drift * (0.35 + (index % 5) * 0.12)
+                py = self.y + ((sy - drift) % 1.0) * h
                 pixel = max(2, radius * 2.0)
                 Color(*tint)
                 Rectangle(pos=(px, py), size=(pixel, pixel))
@@ -569,6 +581,29 @@ class StarDodger(FloatLayout):
                 Ellipse(pos=(planet_x + planet_r * crater_x - planet_r * crater_size,
                             planet_y + planet_r * crater_y - planet_r * crater_size),
                         size=(planet_r * crater_size * 2, planet_r * crater_size * 2))
+
+            # A second, smaller moon and a distant ringed planet create a real multi-world scene.
+            moon_x = self.x + w * (0.18 if self.level % 2 else 0.82)
+            moon_y = self.y + h * (0.56 if self.level % 3 else 0.39)
+            moon_r = min(w, h) * 0.037
+            Color(0.55, 0.72, 1, 0.12)
+            Ellipse(pos=(moon_x - moon_r * 1.5, moon_y - moon_r * 1.5), size=(moon_r * 3, moon_r * 3))
+            Color(0.42, 0.58, 0.78, 1)
+            Ellipse(pos=(moon_x - moon_r, moon_y - moon_r), size=(moon_r * 2, moon_r * 2))
+            Color(0.10, 0.20, 0.36, 0.55)
+            for crater_dx, crater_dy, crater_scale in ((-0.3, 0.2, 0.18), (0.28, -0.2, 0.13), (0.05, 0.34, 0.10)):
+                Ellipse(pos=(moon_x + moon_r * crater_dx - moon_r * crater_scale,
+                             moon_y + moon_r * crater_dy - moon_r * crater_scale),
+                        size=(moon_r * crater_scale * 2, moon_r * crater_scale * 2))
+
+            far_x = self.x + w * (0.84 if self.level % 2 else 0.16)
+            far_y = self.y + h * 0.30
+            far_r = min(w, h) * 0.020
+            Color(0.35, 0.72, 1, 0.72)
+            Ellipse(pos=(far_x - far_r, far_y - far_r), size=(far_r * 2, far_r * 2))
+            Color(0.65, 0.90, 1, 0.45)
+            Line(ellipse=(far_x - far_r * 1.9, far_y - far_r * 0.45,
+                          far_r * 3.8, far_r * 0.9), width=1.3)
 
             if self.screen in ("home", "settings", "over", "paused"):
                 cx, cy = self.x + w * 0.5, self.y + h * 0.27
