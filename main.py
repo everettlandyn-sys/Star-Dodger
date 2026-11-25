@@ -276,8 +276,6 @@ class StarDodger(FloatLayout):
         if self.screen == "game":
             self.move_player_to(touch.x)
             return True
-        # Backup start path: if a menu tap misses the Play button, it still
-        # starts a run instead of leaving the player stuck on the title screen.
         if self.screen == "home":
             self.start_game()
             return True
@@ -328,7 +326,6 @@ class StarDodger(FloatLayout):
         speed = min(0.95, base_speed + self.level * 0.022)
         self.boss_notice = max(0.0, self.boss_notice - dt)
 
-        # Boss arenas replace normal meteor spawns while the boss is active.
         if self.boss is None and randint(1, spawn_chance) == 1:
             self.asteroids.append([
                 uniform(0.06, 0.94), 1.08, uniform(0.75, 1.3),
@@ -339,8 +336,6 @@ class StarDodger(FloatLayout):
         if randint(1, max(18, 46 - self.level)) == 1:
             self.stars.append([uniform(0.06, 0.94), 1.06])
 
-        # Auto-fire gives the player a way to damage bosses without adding
-        # extra buttons that would crowd the mobile controls.
         self.shot_time += dt
         if self.shot_time >= 0.42:
             self.shot_time = 0.0
@@ -358,7 +353,6 @@ class StarDodger(FloatLayout):
             boss[5] += dt
             if boss[5] >= max(0.48, 1.15 - self.level * 0.025):
                 boss[5] = 0.0
-                # Three-way fan attack; projectile speed rises with each boss.
                 shot_speed = 0.25 + self.level * 0.012
                 for offset in (-0.18, 0.0, 0.18):
                     self.boss_shots.append([boss[0], boss[1] - 0.08, offset, -shot_speed])
@@ -376,21 +370,25 @@ class StarDodger(FloatLayout):
                         self.shower_time = 3.0
                         break
 
+        # Boss projectiles now need to overlap the ship's smaller collision zone.
         for shot in self.boss_shots[:]:
             shot[0] += shot[2] * dt
             shot[1] += shot[3] * dt
             if shot[1] < -0.08 or shot[0] < -0.08 or shot[0] > 1.08:
                 self.boss_shots.remove(shot)
-            elif shot[1] < 0.19 and abs(shot[0] - self.player_x) < 0.065:
+            elif abs(shot[1] - 0.14) < 0.045 and abs(shot[0] - self.player_x) < 0.038:
                 self.boss_shots.remove(shot)
                 self.lives -= 1
                 self.explode(shot[0], shot[1], 16)
 
+        # Use a tighter collision box than the visible ship and meteor glow.
+        # The meteor must overlap both horizontally and vertically to cause damage.
         for meteor in self.asteroids[:]:
             meteor[1] -= dt * meteor[3]
             if meteor[1] < -0.12:
                 self.asteroids.remove(meteor)
-            elif meteor[1] < 0.17 and abs(meteor[0] - self.player_x) < 0.065 * meteor[2]:
+            elif (abs(meteor[1] - 0.14) < 0.065 + 0.012 * meteor[2]
+                  and abs(meteor[0] - self.player_x) < 0.035 + 0.012 * meteor[2]):
                 self.asteroids.remove(meteor)
                 self.lives -= 1
                 self.explode(meteor[0], meteor[1], 20)
@@ -500,7 +498,6 @@ class StarDodger(FloatLayout):
                     Rectangle(pos=(bar_x, bar_y), size=(bar_w * max(0, hp) / max_hp, 9))
                     if self.boss_notice > 0:
                         Color(1, 0.25, 0.35, 1)
-                        # The banner text is handled by the HUD label below.
 
                 for mx, my, scale, fall_speed in self.asteroids:
                     x, y = self.x + mx * w, self.y + my * h
