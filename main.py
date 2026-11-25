@@ -19,6 +19,7 @@ class StarDodger(FloatLayout):
         self.asteroids = []
         self.stars = []
         self.particles = []
+        self.blasts = []
         self.bullets = []
         self.boss_shots = []
         self.boss = None
@@ -75,8 +76,12 @@ class StarDodger(FloatLayout):
         self.left_button.bind(on_press=lambda *_: self.shift_player(-0.13))
         self.right_button = self.make_button("▶", (0.22, 0.085), 0.075, 0.83)
         self.right_button.bind(on_press=lambda *_: self.shift_player(0.13))
-        self.pause_button = self.make_button("Ⅱ", (0.17, 0.065), 0.82, 0.88)
+        self.pause_button = self.make_button("", (0.17, 0.065), 0.82, 0.88)
+        self.pause_button.background_color = (0, 0, 0, 0)
         self.pause_button.bind(on_press=self.pause_game)
+        for control in (self.left_button, self.right_button):
+            control.text = ""
+            control.background_color = (0, 0, 0, 0)
         self.resume_button = self.make_button("▶  RESUME", (0.64, 0.08), 0.46)
         self.resume_button.bind(on_press=self.resume_game)
         self.pause_home_button = self.make_button("MAIN MENU", (0.64, 0.075), 0.34)
@@ -218,6 +223,7 @@ class StarDodger(FloatLayout):
         self.asteroids.clear()
         self.stars.clear()
         self.particles.clear()
+        self.blasts.clear()
         self.bullets.clear()
         self.boss_shots.clear()
         self.boss = None
@@ -356,6 +362,7 @@ class StarDodger(FloatLayout):
         return super().on_touch_move(touch)
 
     def explode(self, x, y, count=14):
+        self.blasts.append([x, y, 0.0])
         for _ in range(count):
             angle = uniform(0, math.tau)
             speed = uniform(0.10, 0.46)
@@ -470,6 +477,11 @@ class StarDodger(FloatLayout):
                 self.score += 15
                 self.explode(star[0], star[1], 9)
 
+        for blast in self.blasts[:]:
+            blast[2] += dt
+            if blast[2] > 0.48:
+                self.blasts.remove(blast)
+
         for particle in self.particles[:]:
             particle[0] += particle[2] * dt
             particle[1] += particle[3] * dt
@@ -573,6 +585,14 @@ class StarDodger(FloatLayout):
                 px, py = self.x + self.player_x * w, self.y + h * 0.14
                 Color(0.05, 0.65, 1, 0.2)
                 Ellipse(pos=(px - 34, py - 22), size=(68, 68))
+                # Layered, flickering engine plume behind the ship.
+                flame = 20 + 7 * (0.5 + 0.5 * math.sin(self.level_time * 28))
+                Color(1, 0.22, 0.035, 0.30)
+                Triangle(points=[px, py - flame - 13, px - 15, py - 15, px + 15, py - 15])
+                Color(1, 0.38, 0.06, 0.95)
+                Triangle(points=[px, py - flame, px - 9, py - 14, px + 9, py - 14])
+                Color(0.35, 0.92, 1, 0.95)
+                Triangle(points=[px, py - flame * 0.65, px - 4, py - 15, px + 4, py - 15])
                 Color(0.12, 0.78, 1, 1)
                 Triangle(points=[px, py + 31, px - 23, py - 20, px + 23, py - 20])
                 Color(0.88, 0.98, 1, 1)
@@ -624,6 +644,11 @@ class StarDodger(FloatLayout):
                 for mx, my, scale, fall_speed in self.asteroids:
                     x, y = self.x + mx * w, self.y + my * h
                     r = 15 * scale
+                    # A layered hot tail makes each falling meteor readable in motion.
+                    Color(1, 0.12, 0.015, 0.13)
+                    Triangle(points=[x, y + r * 4.0, x - r * 1.1, y + r * 0.2, x + r * 1.1, y + r * 0.2])
+                    Color(1, 0.30, 0.025, 0.42)
+                    Triangle(points=[x, y + r * 3.0, x - r * 0.68, y + r * 0.15, x + r * 0.68, y + r * 0.15])
                     Color(1, 0.18, 0.02, 0.14)
                     Ellipse(pos=(x - r * 2, y - r * 1.8), size=(r * 4, r * 4))
                     Color(1, 0.22, 0.02, 0.78)
@@ -634,6 +659,16 @@ class StarDodger(FloatLayout):
                     Ellipse(pos=(x - r, y - r), size=(r * 2, r * 2))
                     Color(0.95, 0.52, 0.3, 1)
                     Ellipse(pos=(x - r * 0.5, y + r * 0.05), size=(r * 0.45, r * 0.4))
+
+                # Expanding neon shock rings make impacts feel punchier.
+                for blast_x, blast_y, age in self.blasts:
+                    radius = (0.018 + age * 0.30) * min(w, h)
+                    alpha = max(0.0, 1.0 - age / 0.48)
+                    bx, by = self.x + blast_x * w, self.y + blast_y * h
+                    Color(1.0, 0.42, 0.10, alpha * 0.85)
+                    Line(circle=(bx, by, radius), width=max(1.0, 3.0 * alpha))
+                    Color(0.12, 0.78, 1.0, alpha * 0.45)
+                    Line(circle=(bx, by, radius * 0.62), width=max(1.0, 2.0 * alpha))
 
                 for x, y, vx, vy, life, particle_size in self.particles:
                     alpha = min(1.0, life * 2.2)
@@ -700,16 +735,24 @@ class StarDodger(FloatLayout):
                 # Bright, always-visible touch controls.
                 control_y = self.y + h * 0.035
                 control_h = max(48, h * 0.055)
-                for cx, caption in ((self.x + w * 0.16, "◀"),
-                                    (self.x + w * 0.84, "▶"),
-                                    (self.x + w * 0.94, "Ⅱ")):
+                for cx, control_kind in ((self.x + w * 0.16, "left"),
+                                         (self.x + w * 0.84, "right"),
+                                         (self.x + w * 0.94, "pause")):
                     Color(0.02, 0.12, 0.30, 0.94)
                     Ellipse(pos=(cx - control_h * 0.52, control_y),
                             size=(control_h, control_h))
                     Color(0.18, 0.82, 1, 1)
-                    self.draw_canvas_text(caption, cx - control_h * 0.22,
-                                          control_y + control_h * 0.28,
-                                          font, (0.75, 0.95, 1, 1))
+                    if control_kind == "left":
+                        Triangle(points=[cx - 9, control_y + control_h * 0.5,
+                                         cx + 8, control_y + control_h * 0.78,
+                                         cx + 8, control_y + control_h * 0.22])
+                    elif control_kind == "right":
+                        Triangle(points=[cx + 9, control_y + control_h * 0.5,
+                                         cx - 8, control_y + control_h * 0.78,
+                                         cx - 8, control_y + control_h * 0.22])
+                    else:
+                        Rectangle(pos=(cx - 6, control_y + control_h * 0.28), size=(4, control_h * 0.44))
+                        Rectangle(pos=(cx + 2, control_y + control_h * 0.28), size=(4, control_h * 0.44))
 
             Color(0.12, 0.68, 1, 0.35)
             Line(points=[self.x, self.y + 1, self.x + w, self.y + 1], width=1)
