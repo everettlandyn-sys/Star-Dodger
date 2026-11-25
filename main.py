@@ -73,10 +73,7 @@ class StarDodger(FloatLayout):
         self.back_button = self.make_button("←  BACK", (0.64, 0.07), 0.15)
         self.back_button.bind(on_press=self.show_home)
 
-        self.left_button = self.make_button("◀", (0.22, 0.085), 0.075, 0.17)
-        self.left_button.bind(on_press=lambda *_: self.shift_player(-0.13))
-        self.right_button = self.make_button("▶", (0.22, 0.085), 0.075, 0.83)
-        self.right_button.bind(on_press=lambda *_: self.shift_player(0.13))
+        # Steering is touch-only: drag anywhere on the playfield.
         self.pause_button = self.make_button("", (0.17, 0.065), 0.82, 0.88)
         self.pause_button.background_color = (0, 0, 0, 0)
         self.pause_button.bind(on_press=self.pause_game)
@@ -93,7 +90,7 @@ class StarDodger(FloatLayout):
             self.hud_level, self.hud_lives, self.hud_score,
             self.play_button, self.settings_button, self.retry_button,
             self.home_button, self.difficulty_label, *self.difficulty_buttons,
-            self.back_button, self.left_button, self.right_button,
+            self.back_button,
             self.pause_button, self.resume_button, self.pause_home_button
         ):
             self.add_widget(widget)
@@ -148,7 +145,7 @@ class StarDodger(FloatLayout):
         widget.disabled = not visible
 
     def hide_game_controls(self):
-        for widget in (self.left_button, self.right_button, self.pause_button):
+        for widget in (self.pause_button,):
             self.set_visible(widget, False)
 
     def show_home(self, *args):
@@ -255,11 +252,9 @@ class StarDodger(FloatLayout):
         for hud in (self.hud_level, self.hud_lives, self.hud_score):
             self.set_visible(hud, True)
         self.update_hud()
-        self.set_visible(self.left_button, True)
-        self.set_visible(self.right_button, True)
         self.set_visible(self.pause_button, True)
         self.info.text = "LEVEL 1       ♥ 3 LIVES\nSCORE 0"
-        self.hint.text = "DRAG TO STEER OR USE THE ARROW BUTTONS"
+        self.hint.text = "TOUCH AND DRAG ANYWHERE TO STEER"
         self.redraw()
         Clock.schedule_interval(self.update, 1 / 60)
 
@@ -269,8 +264,6 @@ class StarDodger(FloatLayout):
         Clock.unschedule(self.update)
         self.game_started = False
         self.screen = "paused"
-        self.set_visible(self.left_button, False)
-        self.set_visible(self.right_button, False)
         self.set_visible(self.pause_button, False)
         self.set_visible(self.title, True)
         self.title.text = "[b]PAUSED[/b]"
@@ -296,8 +289,6 @@ class StarDodger(FloatLayout):
         self.set_visible(self.resume_button, False)
         self.set_visible(self.pause_home_button, False)
         self.set_visible(self.hint, True)
-        self.set_visible(self.left_button, True)
-        self.set_visible(self.right_button, True)
         self.set_visible(self.pause_button, True)
         Clock.schedule_interval(self.update, 1 / 60)
 
@@ -334,24 +325,12 @@ class StarDodger(FloatLayout):
             self.redraw()
 
     def on_touch_down(self, touch):
-        # Canvas-drawn controls are also mapped directly for reliable Android taps.
-        if self.screen == "game":
-            rel_x = (touch.x - self.x) / max(1, self.width)
-            rel_y = (touch.y - self.y) / max(1, self.height)
-            if rel_y < 0.13 and rel_x < 0.30:
-                self.shift_player(-0.16)
-                return True
-            if rel_y < 0.13 and 0.68 < rel_x < 0.90:
-                self.shift_player(0.16)
-                return True
-            if rel_y < 0.13 and rel_x >= 0.90:
-                self.pause_game()
-                return True
-        # Let buttons receive taps before the playfield handles steering.
+        # Let the pause button receive its tap; all other gameplay touches steer.
         if super().on_touch_down(touch):
             return True
         if self.screen == "game":
             self.move_player_to(touch.x)
+            touch.grab(self)
             return True
         if self.screen == "home":
             self.start_game()
@@ -359,10 +338,16 @@ class StarDodger(FloatLayout):
         return False
 
     def on_touch_move(self, touch):
-        if self.screen == "game":
+        if self.screen == "game" and touch.grab_current is self:
             self.move_player_to(touch.x)
             return True
         return super().on_touch_move(touch)
+
+    def on_touch_up(self, touch):
+        if touch.grab_current is self:
+            touch.ungrab(self)
+            return True
+        return super().on_touch_up(touch)
 
     def explode(self, x, y, count=14):
         self.blasts.append([x, y, 0.0])
@@ -380,7 +365,7 @@ class StarDodger(FloatLayout):
         dt = min(dt, 0.05)
         self.level_time += dt
         self.score_time += dt
-        # Smooth, frame-rate-independent movement toward the arrow-selected position.
+        # Smooth, frame-rate-independent movement follows the player's finger.
         slide_factor = 1.0 - math.exp(-dt * 8.0)
         self.player_x += (self.player_target_x - self.player_x) * slide_factor
         self.shower_time = max(0.0, self.shower_time - dt)
@@ -611,12 +596,32 @@ class StarDodger(FloatLayout):
                 Triangle(points=[px, py - flame, px - 9, py - 14, px + 9, py - 14])
                 Color(0.35, 0.92, 1, 0.95)
                 Triangle(points=[px, py - flame * 0.65, px - 4, py - 15, px + 4, py - 15])
-                Color(0.12, 0.78, 1, 1)
-                Triangle(points=[px, py + 31, px - 23, py - 20, px + 23, py - 20])
-                Color(0.88, 0.98, 1, 1)
-                Ellipse(pos=(px - 5, py + 3), size=(10, 10))
+                # Detailed player craft: swept wings, armored fuselage, cockpit,
+                # engine nacelles, panel seams and bright metallic edge highlights.
+                Color(0.015, 0.16, 0.34, 1)
+                Triangle(points=[px - 2, py + 13, px - 34, py - 15, px - 18, py - 23])
+                Triangle(points=[px + 2, py + 13, px + 34, py - 15, px + 18, py - 23])
+                Color(0.08, 0.42, 0.72, 1)
+                Triangle(points=[px, py + 35, px - 28, py - 19, px + 28, py - 19])
+                Color(0.35, 0.88, 1, 1)
+                Triangle(points=[px, py + 34, px - 8, py - 17, px + 8, py - 17])
+                Color(0.72, 0.94, 1, 1)
+                Line(points=[px, py + 30, px - 21, py - 13, px - 30, py - 17], width=1.5)
+                Line(points=[px, py + 30, px + 21, py - 13, px + 30, py - 17], width=1.5)
+                Color(0.015, 0.07, 0.16, 1)
+                Triangle(points=[px, py + 23, px - 7, py + 1, px + 7, py + 1])
+                Color(0.25, 0.9, 1, 1)
+                Ellipse(pos=(px - 5, py + 5), size=(10, 17))
+                Color(0.88, 0.98, 1, 0.9)
+                Line(points=[px, py + 18, px, py + 7], width=1.2)
+                Color(0.04, 0.24, 0.42, 1)
+                Rectangle(pos=(px - 25, py - 17), size=(8, 4))
+                Rectangle(pos=(px + 17, py - 17), size=(8, 4))
+                Color(0.35, 0.92, 1, 1)
+                Ellipse(pos=(px - 27, py - 19), size=(5, 5))
+                Ellipse(pos=(px + 22, py - 19), size=(5, 5))
                 Color(1, 0.42, 0.12, 0.95)
-                Triangle(points=[px, py - 40, px - 8, py - 18, px + 8, py - 18])
+                Triangle(points=[px, py - 42, px - 8, py - 18, px + 8, py - 18])
 
                 for bx, by in self.bullets:
                     x, y = self.x + bx * w, self.y + by * h
@@ -750,28 +755,7 @@ class StarDodger(FloatLayout):
                                       panel_xs[2] + 10, panel_y + panel_h * 0.30,
                                       font, (0.56, 1, 0.91, 1))
 
-                # Bright, always-visible touch controls.
-                control_y = self.y + h * 0.035
-                control_h = max(48, h * 0.055)
-                for cx, control_kind in ((self.x + w * 0.16, "left"),
-                                         (self.x + w * 0.84, "right"),
-                                         (self.x + w * 0.94, "pause")):
-                    Color(0.02, 0.12, 0.30, 0.94)
-                    Ellipse(pos=(cx - control_h * 0.52, control_y),
-                            size=(control_h, control_h))
-                    Color(0.18, 0.82, 1, 1)
-                    if control_kind == "left":
-                        Triangle(points=[cx - 9, control_y + control_h * 0.5,
-                                         cx + 8, control_y + control_h * 0.78,
-                                         cx + 8, control_y + control_h * 0.22])
-                    elif control_kind == "right":
-                        Triangle(points=[cx + 9, control_y + control_h * 0.5,
-                                         cx - 8, control_y + control_h * 0.78,
-                                         cx - 8, control_y + control_h * 0.22])
-                    else:
-                        Rectangle(pos=(cx - 6, control_y + control_h * 0.28), size=(4, control_h * 0.44))
-                        Rectangle(pos=(cx + 2, control_y + control_h * 0.28), size=(4, control_h * 0.44))
-
+                # No on-screen steering arrows: the whole playfield is touch-and-drag.
             Color(0.12, 0.68, 1, 0.35)
             Line(points=[self.x, self.y + 1, self.x + w, self.y + 1], width=1)
 
