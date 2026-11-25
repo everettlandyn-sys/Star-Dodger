@@ -77,9 +77,6 @@ class StarDodger(FloatLayout):
         self.pause_button = self.make_button("", (0.17, 0.065), 0.82, 0.88)
         self.pause_button.background_color = (0, 0, 0, 0)
         self.pause_button.bind(on_press=self.pause_game)
-        for control in (self.left_button, self.right_button):
-            control.text = ""
-            control.background_color = (0, 0, 0, 0)
         self.resume_button = self.make_button("▶  RESUME", (0.64, 0.08), 0.46)
         self.resume_button.bind(on_press=self.resume_game)
         self.pause_home_button = self.make_button("MAIN MENU", (0.64, 0.075), 0.34)
