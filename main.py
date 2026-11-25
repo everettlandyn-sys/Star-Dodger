@@ -74,7 +74,7 @@ class StarDodger(FloatLayout):
         self.left_button.bind(on_press=lambda *_: self.shift_player(-0.13))
         self.right_button = self.make_button("▶", (0.22, 0.085), 0.075, 0.83)
         self.right_button.bind(on_press=lambda *_: self.shift_player(0.13))
-        self.pause_button = self.make_button("Ⅱ", (0.17, 0.065), 0.91, 0.88)
+        self.pause_button = self.make_button("Ⅱ", (0.17, 0.065), 0.82, 0.88)
         self.pause_button.bind(on_press=self.pause_game)
         self.resume_button = self.make_button("▶  RESUME", (0.64, 0.08), 0.46)
         self.resume_button.bind(on_press=self.resume_game)
@@ -103,14 +103,21 @@ class StarDodger(FloatLayout):
         )
 
     def make_hud_label(self, text, center_x):
+        # Keep the HUD inside the safe screen area and give every value
+        # a dark backing so it stays readable over every level background.
         label = Label(
-            text=text, markup=True, font_size="17sp",
-            color=(0.94, 0.98, 1, 1),
-            size_hint=(0.32, None), height=42,
-            pos_hint={"center_x": center_x, "top": 0.985},
+            text=text, markup=True, font_size="20sp",
+            color=(1, 1, 1, 1), bold=True,
+            size_hint=(0.31, None), height=54,
+            pos_hint={"center_x": center_x, "center_y": 0.925},
             halign="center", valign="middle"
         )
         label.text_size = (None, None)
+        with label.canvas.before:
+            Color(0.015, 0.035, 0.09, 0.92)
+            panel = Rectangle(pos=label.pos, size=label.size)
+        label.bind(pos=lambda instance, value: setattr(panel, "pos", value))
+        label.bind(size=lambda instance, value: setattr(panel, "size", value))
         return label
 
     def update_hud(self):
