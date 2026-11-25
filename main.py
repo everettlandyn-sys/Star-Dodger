@@ -39,7 +39,11 @@ class StarDodger(FloatLayout):
         self.title = self.make_label("[b]STAR[/b] [color=35d9ff]DODGER[/color]", 38, 0.77)
         self.title.markup = True
         self.subtitle = self.make_label("DODGE THE METEORS. COLLECT THE STARS.", 11, 0.68)
-        self.info = self.make_label("", 15, 0.96)
+        self.info = self.make_label("", 17, 0.93)
+        self.info.height = 58
+        self.info.text_size = (None, None)
+        self.info.halign = "center"
+        self.info.valign = "middle"
         self.hint = self.make_label("TAP PLAY TO START", 11, 0.035)
 
         self.play_button = self.make_button("▶  PLAY", (0.64, 0.085), 0.49)
@@ -203,7 +207,7 @@ class StarDodger(FloatLayout):
         self.set_visible(self.left_button, True)
         self.set_visible(self.right_button, True)
         self.set_visible(self.pause_button, True)
-        self.info.text = "SECTOR 1     SCORE 0     ♥ 3"
+        self.info.text = "LEVEL 1       ♥ 3 LIVES\nSCORE 0"
         self.hint.text = "DRAG TO STEER OR USE THE ARROW BUTTONS"
         self.redraw()
         Clock.schedule_interval(self.update, 1 / 60)
@@ -413,8 +417,8 @@ class StarDodger(FloatLayout):
             self.game_over()
             return False
 
-        boss_text = f"     BOSS {self.boss[2]}/{self.boss[3]}" if self.boss else ""
-        self.info.text = f"SECTOR {self.level}     SCORE {self.score}     ♥ {self.lives}{boss_text}"
+        boss_text = f"   BOSS {self.boss[2]}/{self.boss[3]}" if self.boss else ""
+        self.info.text = f"LEVEL {self.level}       ♥ {self.lives} LIVES{boss_text}\nSCORE {self.score}"
         self.hint.text = "⚠  BOSS INCOMING!" if self.boss_notice > 0 else ("DEFEAT THE BOSS!" if self.boss else "DODGE METEORS • COLLECT STARS")
         self.redraw()
         return True
