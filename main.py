@@ -2,6 +2,7 @@ import math
 from random import randint, uniform
 
 from kivy.app import App
+from kivy.core.text import Label as CoreLabel
 from kivy.clock import Clock
 from kivy.graphics import Color, Ellipse, Line, Rectangle, Triangle
 from kivy.uix.button import Button
@@ -323,6 +324,19 @@ class StarDodger(FloatLayout):
             self.redraw()
 
     def on_touch_down(self, touch):
+        # Canvas-drawn controls are also mapped directly for reliable Android taps.
+        if self.screen == "game":
+            rel_x = (touch.x - self.x) / max(1, self.width)
+            rel_y = (touch.y - self.y) / max(1, self.height)
+            if rel_y < 0.13 and rel_x < 0.30:
+                self.shift_player(-0.16)
+                return True
+            if rel_y < 0.13 and 0.68 < rel_x < 0.90:
+                self.shift_player(0.16)
+                return True
+            if rel_y < 0.13 and rel_x >= 0.90:
+                self.pause_game()
+                return True
         # Let buttons receive taps before the playfield handles steering.
         if super().on_touch_down(touch):
             return True
@@ -472,6 +486,13 @@ class StarDodger(FloatLayout):
         self.redraw()
         return True
 
+    def draw_canvas_text(self, text, x, y, font_size, color):
+        label = CoreLabel(text=text, font_size=font_size, bold=True, color=color)
+        label.refresh()
+        texture = label.texture
+        Color(1, 1, 1, 1)
+        Rectangle(texture=texture, pos=(x, y), size=texture.size)
+
     def redraw(self, *args):
         self.canvas.clear()
         w, h = self.width, self.height
@@ -494,9 +515,47 @@ class StarDodger(FloatLayout):
             Color(*glow_b)
             Ellipse(pos=(self.x + w * 0.32, self.y + h * 0.1), size=(w * 0.8, h * 0.42))
 
-            for sx, sy, radius in self.background_stars:
-                Color(star_tint[0], star_tint[1], star_tint[2], min(1, star_tint[3] * (0.45 + radius * 0.18)))
-                Ellipse(pos=(self.x + sx * w, self.y + sy * h), size=(radius, radius))
+            # Retro pixel-art starfield: crisp square stars and occasional plus-shaped glints.
+            pixel_colors = [
+                (0.16, 0.35, 1.0, 0.95), (0.55, 0.12, 1.0, 0.9),
+                (0.05, 0.85, 1.0, 0.9), (0.92, 0.30, 1.0, 0.85),
+                (0.25, 0.95, 0.75, 0.85)
+            ]
+            for index, (sx, sy, radius) in enumerate(self.background_stars):
+                tint = pixel_colors[index % len(pixel_colors)]
+                px = self.x + sx * w
+                py = self.y + sy * h
+                pixel = max(2, radius * 2.0)
+                Color(*tint)
+                Rectangle(pos=(px, py), size=(pixel, pixel))
+                if index % 17 == 0:
+                    Rectangle(pos=(px - 1, py - 5), size=(pixel + 2, 12))
+                    Rectangle(pos=(px - 5, py - 1), size=(12, pixel + 2))
+
+            # Large pixel-space planets with neon halos and ring details.
+            planet_x = self.x + w * (0.72 if self.level % 2 else 0.24)
+            planet_y = self.y + h * (0.79 if self.level % 3 else 0.67)
+            planet_r = min(w, h) * 0.105
+            planet_colors = [
+                (0.05, 0.78, 0.72, 1), (0.40, 0.20, 0.95, 1),
+                (0.95, 0.25, 0.72, 1), (0.12, 0.48, 1, 1),
+                (0.28, 0.82, 0.95, 1)
+            ]
+            planet_color = planet_colors[(max(1, self.level) - 1) % len(planet_colors)]
+            Color(0.18, 0.10, 1, 0.18)
+            Ellipse(pos=(planet_x - planet_r * 1.65, planet_y - planet_r * 1.65),
+                    size=(planet_r * 3.3, planet_r * 3.3))
+            Color(0.12, 0.20, 0.95, 0.75)
+            Line(ellipse=(planet_x - planet_r * 1.55, planet_y - planet_r * 0.52,
+                          planet_r * 3.1, planet_r * 1.05), width=2.0)
+            Color(*planet_color)
+            Ellipse(pos=(planet_x - planet_r, planet_y - planet_r),
+                    size=(planet_r * 2, planet_r * 2))
+            Color(0.02, 0.10, 0.45, 0.28)
+            for band in range(4):
+                Rectangle(pos=(planet_x - planet_r * 0.78,
+                               planet_y - planet_r * 0.55 + band * planet_r * 0.34),
+                          size=(planet_r * (1.2 + (band % 2) * 0.25), planet_r * 0.12))
 
             if self.screen in ("home", "settings", "over", "paused"):
                 cx, cy = self.x + w * 0.5, self.y + h * 0.27
@@ -587,6 +646,44 @@ class StarDodger(FloatLayout):
                     Ellipse(pos=(x - 17, y - 3), size=(34, 34))
                     Color(1, 0.84, 0.22, 1)
                     Ellipse(pos=(x - 8, y + 1), size=(16, 16))
+
+            # Draw the HUD directly into the game canvas so it cannot disappear
+            # behind or below Kivy child widgets on different Android devices.
+            if self.screen == "game":
+                panel_y = self.y + h * 0.925
+                panel_h = max(42, h * 0.045)
+                panel_w = w * 0.29
+                panel_xs = (self.x + w * 0.025, self.x + w * 0.355, self.x + w * 0.685)
+                for panel_x in panel_xs:
+                    Color(0.015, 0.025, 0.12, 0.94)
+                    Rectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h))
+                    Color(0.12, 0.65, 1, 0.95)
+                    Line(rectangle=(panel_x, panel_y, panel_w, panel_h), width=1.2)
+                font = max(14, min(22, w * 0.035))
+                self.draw_canvas_text(f"LEVEL {self.level}",
+                                      panel_xs[0] + 8, panel_y + panel_h * 0.28,
+                                      font, (0.55, 0.88, 1, 1))
+                hearts = "♥ " * max(0, self.lives)
+                self.draw_canvas_text(hearts.strip() or "0 LIVES",
+                                      panel_xs[1] + 8, panel_y + panel_h * 0.28,
+                                      font, (1, 0.28, 0.48, 1))
+                self.draw_canvas_text(f"SCORE {self.score}",
+                                      panel_xs[2] + 8, panel_y + panel_h * 0.28,
+                                      font, (0.65, 1, 0.92, 1))
+
+                # Bright, always-visible touch controls.
+                control_y = self.y + h * 0.035
+                control_h = max(48, h * 0.055)
+                for cx, caption in ((self.x + w * 0.16, "◀"),
+                                    (self.x + w * 0.84, "▶"),
+                                    (self.x + w * 0.94, "Ⅱ")):
+                    Color(0.02, 0.12, 0.30, 0.94)
+                    Ellipse(pos=(cx - control_h * 0.52, control_y),
+                            size=(control_h, control_h))
+                    Color(0.18, 0.82, 1, 1)
+                    self.draw_canvas_text(caption, cx - control_h * 0.22,
+                                          control_y + control_h * 0.28,
+                                          font, (0.75, 0.95, 1, 1))
 
             Color(0.12, 0.68, 1, 0.35)
             Line(points=[self.x, self.y + 1, self.x + w, self.y + 1], width=1)
