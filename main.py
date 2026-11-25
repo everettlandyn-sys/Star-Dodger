@@ -569,6 +569,18 @@ class StarDodger(FloatLayout):
                 Rectangle(pos=(planet_x - planet_r * 0.78,
                                planet_y - planet_r * 0.55 + band * planet_r * 0.34),
                           size=(planet_r * (1.2 + (band % 2) * 0.25), planet_r * 0.12))
+            # Surface highlights, shadow edge and tiny crater details.
+            Color(0.72, 0.98, 1, 0.22)
+            Ellipse(pos=(planet_x - planet_r * 0.66, planet_y + planet_r * 0.22),
+                    size=(planet_r * 0.72, planet_r * 0.30))
+            Color(0.005, 0.025, 0.16, 0.28)
+            Ellipse(pos=(planet_x + planet_r * 0.28, planet_y - planet_r * 0.68),
+                    size=(planet_r * 0.52, planet_r * 1.32))
+            Color(0.01, 0.16, 0.36, 0.34)
+            for crater_x, crater_y, crater_size in ((-0.38, 0.12, 0.13), (0.34, 0.28, 0.09), (-0.12, -0.35, 0.08)):
+                Ellipse(pos=(planet_x + planet_r * crater_x - planet_r * crater_size,
+                            planet_y + planet_r * crater_y - planet_r * crater_size),
+                        size=(planet_r * crater_size * 2, planet_r * crater_size * 2))
 
             if self.screen in ("home", "settings", "over", "paused"):
                 cx, cy = self.x + w * 0.5, self.y + h * 0.27
