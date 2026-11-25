@@ -238,8 +238,9 @@ class StarDodger(FloatLayout):
         for button in self.difficulty_buttons:
             self.set_visible(button, False)
         self.set_visible(self.info, False)
+        # The canvas HUD is the single source of truth during gameplay.
         for hud in (self.hud_level, self.hud_lives, self.hud_score):
-            self.set_visible(hud, True)
+            self.set_visible(hud, False)
         self.update_hud()
         self.set_visible(self.hint, True)
         self.set_visible(self.info, False)
@@ -647,29 +648,54 @@ class StarDodger(FloatLayout):
                     Color(1, 0.84, 0.22, 1)
                     Ellipse(pos=(x - 8, y + 1), size=(16, 16))
 
-            # Draw the HUD directly into the game canvas so it cannot disappear
-            # behind or below Kivy child widgets on different Android devices.
+            # Neon angular HUD: three separate panels, glowing edges and ship-shaped lives.
             if self.screen == "game":
                 panel_y = self.y + h * 0.925
-                panel_h = max(42, h * 0.045)
+                panel_h = max(48, h * 0.052)
                 panel_w = w * 0.29
                 panel_xs = (self.x + w * 0.025, self.x + w * 0.355, self.x + w * 0.685)
+                font = max(13, min(20, w * 0.031))
                 for panel_x in panel_xs:
-                    Color(0.015, 0.025, 0.12, 0.94)
+                    # Soft outer glow, dark glass fill, and clipped sci-fi corners.
+                    Color(0.02, 0.38, 1, 0.16)
+                    Line(points=[panel_x-2, panel_y+5, panel_x-2, panel_y+panel_h-5,
+                                 panel_x+10, panel_y+panel_h+2, panel_x+panel_w-10, panel_y+panel_h+2,
+                                 panel_x+panel_w+2, panel_y+panel_h-5, panel_x+panel_w+2, panel_y+5],
+                         close=True, width=3.2)
+                    Color(0.008, 0.025, 0.09, 0.94)
                     Rectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h))
-                    Color(0.12, 0.65, 1, 0.95)
-                    Line(rectangle=(panel_x, panel_y, panel_w, panel_h), width=1.2)
-                font = max(14, min(22, w * 0.035))
+                    Color(0.10, 0.58, 1, 0.98)
+                    Line(points=[panel_x, panel_y+7, panel_x, panel_y+panel_h-7,
+                                 panel_x+10, panel_y+panel_h, panel_x+panel_w-10, panel_y+panel_h,
+                                 panel_x+panel_w, panel_y+panel_h-7, panel_x+panel_w, panel_y+7,
+                                 panel_x+panel_w-10, panel_y, panel_x+10, panel_y],
+                         close=True, width=1.35)
+
                 self.draw_canvas_text(f"LEVEL {self.level}",
-                                      panel_xs[0] + 8, panel_y + panel_h * 0.28,
-                                      font, (0.55, 0.88, 1, 1))
-                hearts = "♥ " * max(0, self.lives)
-                self.draw_canvas_text(hearts.strip() or "0 LIVES",
-                                      panel_xs[1] + 8, panel_y + panel_h * 0.28,
-                                      font, (1, 0.28, 0.48, 1))
+                                      panel_xs[0] + 10, panel_y + panel_h * 0.30,
+                                      font, (0.58, 0.91, 1, 1))
+
+                # Three tiny cyan ships communicate remaining lives at a glance.
+                life_cx = panel_xs[1] + panel_w * 0.5
+                life_gap = min(25, panel_w * 0.23)
+                ship_y = panel_y + panel_h * 0.53
+                for life_index in range(3):
+                    sx = life_cx + (life_index - 1) * life_gap
+                    if life_index < self.lives:
+                        Color(0.02, 0.65, 1, 0.22)
+                        Ellipse(pos=(sx-10, ship_y-11), size=(20, 22))
+                        Color(0.22, 0.88, 1, 1)
+                        Triangle(points=[sx, ship_y+10, sx-7, ship_y-7, sx+7, ship_y-7])
+                        Color(0.9, 0.99, 1, 1)
+                        Line(points=[sx, ship_y+5, sx, ship_y-3], width=1.1)
+                    else:
+                        Color(0.25, 0.38, 0.55, 0.5)
+                        Line(points=[sx, ship_y+8, sx-7, ship_y-7, sx+7, ship_y-7],
+                             close=True, width=1)
+
                 self.draw_canvas_text(f"SCORE {self.score}",
-                                      panel_xs[2] + 8, panel_y + panel_h * 0.28,
-                                      font, (0.65, 1, 0.92, 1))
+                                      panel_xs[2] + 10, panel_y + panel_h * 0.30,
+                                      font, (0.56, 1, 0.91, 1))
 
                 # Bright, always-visible touch controls.
                 control_y = self.y + h * 0.035
