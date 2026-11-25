@@ -16,6 +16,7 @@ class StarDodger(FloatLayout):
         self.score = 0
         self.lives = 3
         self.player_x = 0.5
+        self.player_target_x = 0.5
         self.asteroids = []
         self.stars = []
         self.particles = []
@@ -220,6 +221,7 @@ class StarDodger(FloatLayout):
         self.score = 0
         self.lives = 3
         self.player_x = 0.5
+        self.player_target_x = 0.5
         self.asteroids.clear()
         self.stars.clear()
         self.particles.clear()
@@ -322,12 +324,13 @@ class StarDodger(FloatLayout):
 
     def shift_player(self, amount):
         if self.screen == "game":
-            self.player_x = max(0.07, min(0.93, self.player_x + amount))
-            self.redraw()
+            # Arrow taps set a destination; glide toward it instead of teleporting.
+            self.player_target_x = max(0.07, min(0.93, self.player_target_x + amount))
 
     def move_player_to(self, x):
         if self.width > 0:
             self.player_x = max(0.06, min(0.94, (x - self.x) / self.width))
+            self.player_target_x = self.player_x
             self.redraw()
 
     def on_touch_down(self, touch):
@@ -377,6 +380,9 @@ class StarDodger(FloatLayout):
         dt = min(dt, 0.05)
         self.level_time += dt
         self.score_time += dt
+        # Smooth, frame-rate-independent movement toward the arrow-selected position.
+        slide_factor = 1.0 - math.exp(-dt * 8.0)
+        self.player_x += (self.player_target_x - self.player_x) * slide_factor
         self.shower_time = max(0.0, self.shower_time - dt)
 
         if self.level_time >= 20:
