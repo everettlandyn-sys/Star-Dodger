@@ -351,21 +351,38 @@ class StarDodger(FloatLayout):
         self.hide_game_controls()
         self.redraw()
 
+    def draw_pause_panel(self, w, h):
+        panel_w, panel_h = w * 0.90, h * 0.30
+        panel_x, panel_y = self.x + (w - panel_w) * 0.5, self.y + h * 0.34
+        Color(0.04, 0.58, 1, 0.18)
+        RoundedRectangle(pos=(panel_x - 5, panel_y - 5),
+                         size=(panel_w + 10, panel_h + 10), radius=[32])
+        Color(0.025, 0.055, 0.14, 0.97)
+        RoundedRectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h), radius=[30])
+        Color(0.28, 0.78, 1, 0.95)
+        Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 30), width=2)
+        self.draw_centered_canvas_text("PAUSED", self.x + w * 0.5,
+                                       self.y + h * 0.68, max(30, w * 0.075),
+                                       (0.96, 0.99, 1, 1))
+        self.draw_centered_canvas_text("TAKE A BREATHER", self.x + w * 0.5,
+                                       self.y + h * 0.61, max(11, w * 0.027),
+                                       (0.55, 0.88, 1, 1))
+
     def draw_game_over(self, w, h):
         panel_w, panel_h = w * 0.86, h * 0.64
         panel_x = self.x + (w - panel_w) * 0.5
         panel_y = self.y + h * 0.17
-        Color(1.0, 0.25, 0.52, 0.20)
+        Color(0.08, 0.62, 1, 0.20)
         RoundedRectangle(pos=(panel_x - 7, panel_y - 7),
                          size=(panel_w + 14, panel_h + 14), radius=[38])
         Color(0.018, 0.025, 0.09, 0.97)
         RoundedRectangle(pos=(panel_x, panel_y),
                          size=(panel_w, panel_h), radius=[34])
-        Color(1.0, 0.42, 0.64, 0.95)
+        Color(0.30, 0.82, 1, 0.95)
         Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 34), width=2)
         self.draw_centered_canvas_text("OH NO, SPACE CADET!", self.x + w * 0.5,
                                        self.y + h * 0.79, max(25, w * 0.064),
-                                       (1.0, 0.60, 0.72, 1))
+                                       (0.90, 0.97, 1, 1))
         self.draw_centered_canvas_text("THAT WAS ONE WILD RIDE!",
                                        self.x + w * 0.5, self.y + h * 0.715,
                                        max(11, w * 0.027), (0.60, 0.86, 1, 1))
@@ -387,7 +404,7 @@ class StarDodger(FloatLayout):
                                        self.x + w * 0.5, stat_y,
                                        max(13, w * 0.033), (0.72, 0.92, 1, 1))
         best_label = "NEW PERSONAL BEST!  ✨" if self.is_new_best else f"BEST SCORE  {self.best_score}"
-        best_color = (1.0, 0.84, 0.40, 1) if self.is_new_best else (0.50, 1.0, 0.82, 1)
+        best_color = (0.48, 0.88, 1, 1) if self.is_new_best else (0.70, 0.90, 1, 1)
         self.draw_centered_canvas_text(best_label, self.x + w * 0.5,
                                        self.y + h * 0.335,
                                        max(13, w * 0.033), best_color)
@@ -533,7 +550,7 @@ class StarDodger(FloatLayout):
             self.shower_time = 4.5
             if self.level % 5 == 0 and self.boss is None:
                 boss_index = self.level // 5 - 1
-                boss_hp = 12 + boss_index * 7
+                boss_hp = min(50, 10 + self.level * 2)
                 boss_type = boss_index % 5
                 self.boss = [0.5, 0.80, boss_hp, boss_hp, 0.0, 0.0, boss_type]
                 self.boss_notice = 3.0
@@ -577,7 +594,7 @@ class StarDodger(FloatLayout):
             self.enemy_spawn_time -= dt
             if self.enemy_spawn_time <= 0 and len(self.enemies) < min(4, 1 + self.level // 8):
                 enemy_type = randint(0, 2)
-                enemy_hp = 2 + min(4, (self.level - 6) // 5)
+                enemy_hp = min(10, 2 + max(0, (self.level - 6) // 2))
                 self.enemies.append([
                     uniform(0.12, 0.88), uniform(0.78, 1.02),
                     enemy_hp, enemy_hp, uniform(0, math.tau), uniform(0.7, 1.5),
@@ -857,7 +874,7 @@ class StarDodger(FloatLayout):
 
         self.draw_centered_canvas_text("STAR DODGER", self.x + w * 0.5,
                                        self.y + h * 0.80, max(32, w * 0.078),
-                                       (1.0, 0.94, 0.55, 1))
+                                       (0.94, 0.98, 1, 1))
         self.draw_centered_canvas_text("DODGE • COLLECT • EXPLORE",
                                        self.x + w * 0.5, self.y + h * 0.70,
                                        max(11, w * 0.028), (0.54, 0.91, 1, 1))
@@ -871,9 +888,9 @@ class StarDodger(FloatLayout):
                                        max_width=bw * 0.90, max_height=bh * 0.72)
 
         buttons = (
-            ("LET'S PLAY!  ✦", 0.49, (0.10, 0.66, 0.98, 1), (0.55, 0.90, 1, 1)),
-            ("SETTINGS  ⚙", 0.37, (0.36, 0.27, 0.82, 1), (0.76, 0.67, 1, 1)),
-            ("HOW TO PLAY  ★", 0.25, (0.08, 0.60, 0.54, 1), (0.48, 1, 0.82, 1)),
+            ("LET'S PLAY!  ✦", 0.49, (0.12, 0.76, 1, 1), (0.55, 0.92, 1, 1)),
+            ("SETTINGS  ⚙", 0.37, (0.10, 0.48, 0.88, 1), (0.45, 0.82, 1, 1)),
+            ("HOW TO PLAY  ★", 0.25, (0.10, 0.34, 0.68, 1), (0.38, 0.76, 1, 1)),
         )
         for label, cy, fill, rim in buttons:
             bx, by = self.x + w * 0.18, self.y + h * (cy - 0.043)
@@ -906,7 +923,7 @@ class StarDodger(FloatLayout):
         Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 32), width=1.8)
         self.draw_centered_canvas_text(heading, self.x + w * 0.5,
                                        self.y + h * 0.80, max(29, w * 0.070),
-                                       (1.0, 0.94, 0.58, 1),
+                                       (0.94, 0.98, 1, 1),
                                        max_width=panel_w * 0.88, max_height=h * 0.075)
         self.draw_centered_canvas_text(subtitle, self.x + w * 0.5,
                                        self.y + h * 0.70, max(11, w * 0.028),
@@ -916,9 +933,9 @@ class StarDodger(FloatLayout):
     def draw_settings_menu(self, w, h):
         self.draw_menu_panel(w, h, "SETTINGS", "PICK YOUR ADVENTURE STYLE")
         colors = {
-            "EASY": (0.08, 0.62, 0.48, 1),
-            "NORMAL": (0.10, 0.52, 0.90, 1),
-            "HARD": (0.72, 0.25, 0.55, 1)
+            "EASY": (0.10, 0.48, 0.82, 1),
+            "NORMAL": (0.12, 0.68, 0.98, 1),
+            "HARD": (0.18, 0.40, 0.78, 1)
         }
         for label, cy in (("EASY", 0.46), ("NORMAL", 0.36), ("HARD", 0.26)):
             selected = label.title() == self.difficulty
@@ -971,11 +988,11 @@ class StarDodger(FloatLayout):
             return
         # Each level cycles through a distinct space environment palette.
         themes = [
-            ((0.012, 0.018, 0.065, 1), (0.035, 0.09, 0.19, 0.28), (0.12, 0.035, 0.20, 0.20), (0.58, 0.80, 1, 0.75)),
-            ((0.075, 0.012, 0.035, 1), (0.30, 0.045, 0.055, 0.30), (0.22, 0.025, 0.10, 0.24), (1, 0.42, 0.30, 0.85)),
-            ((0.008, 0.045, 0.085, 1), (0.025, 0.20, 0.30, 0.30), (0.025, 0.10, 0.22, 0.24), (0.35, 0.88, 1, 0.85)),
-            ((0.035, 0.008, 0.075, 1), (0.16, 0.035, 0.30, 0.32), (0.28, 0.025, 0.24, 0.22), (0.82, 0.52, 1, 0.85)),
-            ((0.008, 0.055, 0.035, 1), (0.025, 0.22, 0.12, 0.30), (0.08, 0.18, 0.045, 0.24), (0.48, 1, 0.65, 0.85)),
+            ((0.008, 0.014, 0.052, 1), (0.025, 0.075, 0.16, 0.28), (0.035, 0.035, 0.15, 0.20), (0.38, 0.82, 1, 0.82)),
+            ((0.008, 0.014, 0.052, 1), (0.025, 0.075, 0.16, 0.28), (0.035, 0.035, 0.15, 0.20), (0.38, 0.82, 1, 0.82)),
+            ((0.008, 0.014, 0.052, 1), (0.025, 0.075, 0.16, 0.28), (0.035, 0.035, 0.15, 0.20), (0.38, 0.82, 1, 0.82)),
+            ((0.008, 0.014, 0.052, 1), (0.025, 0.075, 0.16, 0.28), (0.035, 0.035, 0.15, 0.20), (0.38, 0.82, 1, 0.82)),
+            ((0.008, 0.014, 0.052, 1), (0.025, 0.075, 0.16, 0.28), (0.035, 0.035, 0.15, 0.20), (0.38, 0.82, 1, 0.82)),
         ]
         travel_progress = 0.0
         if self.screen == "game" and self.transition_time > 0:
@@ -1277,10 +1294,15 @@ class StarDodger(FloatLayout):
                     Color(1.0, 0.30, 0.12, pulse)
                     for engine_x in (-12, 12):
                         Ellipse(pos=(ex + engine_x - 3, ey + 14), size=(6, 9))
-                    # Small health pips show tougher fighters need extra hits.
-                    for pip in range(enemy[3]):
-                        Color(0.12, 0.95, 0.72, 0.9 if pip < enemy[2] else 0.18)
-                        Ellipse(pos=(ex - enemy[3] * 4 + pip * 8, ey + 27), size=(5, 5))
+                    # Compact cyan health bar scales cleanly up to 10 hits.
+                    bar_w = 34
+                    Color(0.025, 0.07, 0.16, 0.95)
+                    RoundedRectangle(pos=(ex - bar_w / 2, ey + 27),
+                                     size=(bar_w, 5), radius=[2.5])
+                    Color(0.28, 0.86, 1, 0.98)
+                    RoundedRectangle(pos=(ex - bar_w / 2, ey + 27),
+                                     size=(bar_w * max(0, enemy[2]) / max(1, enemy[3]), 5),
+                                     radius=[2.5])
 
                 for sx, sy, vx, vy in self.enemy_shots:
                     x, y = self.x + sx * w, self.y + sy * h
