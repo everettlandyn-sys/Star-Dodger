@@ -27,6 +27,9 @@ class StarDodger(FloatLayout):
         self.blasts = []
         self.bullets = []
         self.boss_shots = []
+        self.enemies = []
+        self.enemy_shots = []
+        self.enemy_spawn_time = 4.0
         self.boss = None
         self.shot_time = 0.0
         self.boss_notice = 0.0
@@ -250,6 +253,9 @@ class StarDodger(FloatLayout):
         self.blasts.clear()
         self.bullets.clear()
         self.boss_shots.clear()
+        self.enemies.clear()
+        self.enemy_shots.clear()
+        self.enemy_spawn_time = 4.0
         self.boss = None
         self.shot_time = 0.0
         self.boss_notice = 0.0
@@ -556,6 +562,76 @@ class StarDodger(FloatLayout):
             bullet[1] += dt * 1.05
             if bullet[1] > 1.12:
                 self.bullets.remove(bullet)
+
+        # Regular enemy fighters begin appearing after level 5.
+        if self.level > 5:
+            self.enemy_spawn_time -= dt
+            if self.enemy_spawn_time <= 0 and len(self.enemies) < min(4, 1 + self.level // 8):
+                enemy_type = randint(0, 2)
+                enemy_hp = 2 + min(4, (self.level - 6) // 5)
+                self.enemies.append([
+                    uniform(0.12, 0.88), uniform(0.78, 1.02),
+                    enemy_hp, enemy_hp, uniform(0, math.tau), uniform(0.7, 1.5),
+                    enemy_type
+                ])
+                self.enemy_spawn_time = uniform(3.5, 6.5) * max(0.58, 1 - (self.level - 6) * 0.025)
+        else:
+            self.enemy_spawn_time = 4.0
+
+        for enemy in self.enemies[:]:
+            enemy_type = int(enemy[6])
+            enemy[4] += dt
+            enemy[0] += math.sin(enemy[4] * (1.1 + enemy_type * 0.35)) * dt * (0.10 + self.level * 0.002)
+            enemy[0] = max(0.08, min(0.92, enemy[0]))
+            enemy[1] -= dt * (0.055 + self.level * 0.0025)
+            enemy[5] -= dt
+            if enemy[5] <= 0:
+                enemy[5] = uniform(1.1, 1.9) * max(0.62, 1 - (self.level - 6) * 0.018)
+                dx = max(-0.30, min(0.30, (self.player_x - enemy[0]) * 0.42))
+                shot_speed = 0.30 + self.level * 0.009
+                self.enemy_shots.append([enemy[0], enemy[1] - 0.035, dx, -shot_speed])
+                if enemy_type == 2:
+                    self.enemy_shots.append([enemy[0], enemy[1] - 0.035, dx - 0.13, -shot_speed * 0.88])
+                    self.enemy_shots.append([enemy[0], enemy[1] - 0.035, dx + 0.13, -shot_speed * 0.88])
+            if enemy[1] < -0.12:
+                self.enemies.remove(enemy)
+                continue
+            for bullet in self.bullets[:]:
+                if abs(bullet[0] - enemy[0]) < 0.075 and abs(bullet[1] - enemy[1]) < 0.065:
+                    self.bullets.remove(bullet)
+                    enemy[2] -= 1
+                    self.explode(enemy[0], enemy[1], 4)
+                    if enemy[2] <= 0:
+                        self.score += 75 + self.level * 5
+                        self.explode(enemy[0], enemy[1], 18)
+                        self.enemies.remove(enemy)
+                    break
+            if enemy not in self.enemies:
+                continue
+            if self.circle_hits_ship(self.x + enemy[0] * self.width,
+                                     self.y + enemy[1] * self.height, 13):
+                self.enemies.remove(enemy)
+                if self.shield_time > 0:
+                    self.shield_time = 0.0
+                    self.explode(enemy[0], enemy[1], 20)
+                else:
+                    self.lives -= 1
+                    self.explode(enemy[0], enemy[1], 18)
+
+        for shot in self.enemy_shots[:]:
+            shot[0] += shot[2] * dt
+            shot[1] += shot[3] * dt
+            if shot[1] < -0.08 or shot[0] < -0.08 or shot[0] > 1.08:
+                self.enemy_shots.remove(shot)
+            elif self.circle_hits_ship(self.x + shot[0] * self.width,
+                                       self.y + shot[1] * self.height, 8):
+                self.enemy_shots.remove(shot)
+                if self.shield_time > 0:
+                    self.shield_time = 0.0
+                    self.explode(shot[0], shot[1], 18)
+                else:
+                    self.lives -= 1
+                    self.explode(shot[0], shot[1], 14)
 
         if self.boss is not None:
             boss = self.boss
@@ -1115,10 +1191,42 @@ class StarDodger(FloatLayout):
                 Color(1, 0.42, 0.12, 0.95)
                 Triangle(points=[px, py - 42, px - 8, py - 18, px + 8, py - 18])
 
-                for bx, by in self.bullets:
-                    x, y = self.x + bx * w, self.y + by * h
-                    Color(0.35, 0.95, 1, 1)
-                    Line(points=[x, y - 12, x, y + 12], width=2.2)
+                for enemy in self.enemies:
+                    ex, ey = self.x + enemy[0] * w, self.y + enemy[1] * h
+                    enemy_type = int(enemy[6])
+                    enemy_colors = ((1.0, 0.28, 0.32), (1.0, 0.62, 0.16), (0.72, 0.32, 1.0))
+                    tint = enemy_colors[enemy_type]
+                    pulse = 0.65 + 0.35 * math.sin(enemy[4] * 7)
+                    # Compact hostile fighter with swept wings, cockpit and engine glow.
+                    Color(tint[0], tint[1], tint[2], 0.18)
+                    Ellipse(pos=(ex - 30, ey - 25), size=(60, 50))
+                    Color(0.055, 0.075, 0.16, 1)
+                    Triangle(points=[ex, ey - 24, ex - 29, ey + 13, ex - 10, ey + 8])
+                    Triangle(points=[ex, ey - 24, ex + 29, ey + 13, ex + 10, ey + 8])
+                    Color(*tint, 1)
+                    Triangle(points=[ex, ey - 27, ex - 17, ey + 20, ex + 17, ey + 20])
+                    Color(min(1, tint[0] * 1.25), min(1, tint[1] * 1.25), min(1, tint[2] * 1.25), 1)
+                    Triangle(points=[ex, ey - 17, ex - 7, ey + 14, ex + 7, ey + 14])
+                    Color(0.04, 0.12, 0.22, 1)
+                    Ellipse(pos=(ex - 5, ey + 2), size=(10, 13))
+                    Color(0.75, 0.94, 1, pulse)
+                    Ellipse(pos=(ex - 3, ey + 5), size=(6, 7))
+                    Color(1.0, 0.30, 0.12, pulse)
+                    for engine_x in (-12, 12):
+                        Ellipse(pos=(ex + engine_x - 3, ey + 14), size=(6, 9))
+                    # Small health pips show tougher fighters need extra hits.
+                    for pip in range(enemy[3]):
+                        Color(0.12, 0.95, 0.72, 0.9 if pip < enemy[2] else 0.18)
+                        Ellipse(pos=(ex - enemy[3] * 4 + pip * 8, ey + 27), size=(5, 5))
+
+                for sx, sy, vx, vy in self.enemy_shots:
+                    x, y = self.x + sx * w, self.y + sy * h
+                    Color(1.0, 0.28, 0.32, 0.18)
+                    Ellipse(pos=(x - 12, y - 12), size=(24, 24))
+                    Color(1.0, 0.30, 0.22, 1)
+                    Ellipse(pos=(x - 6, y - 6), size=(12, 12))
+                    Color(1.0, 0.88, 0.72, 1)
+                    Ellipse(pos=(x - 2.5, y - 2.5), size=(5, 5))
 
                 for sx, sy, vx, vy in self.boss_shots:
                     x, y = self.x + sx * w, self.y + sy * h
