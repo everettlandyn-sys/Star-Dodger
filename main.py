@@ -19,6 +19,10 @@ class StarDodger(FloatLayout):
         self.player_target_x = 0.5
         self.asteroids = []
         self.stars = []
+        self.powerups = []
+        self.powerup_spawn_time = 7.0
+        self.shield_time = 0.0
+        self.speed_boost_time = 0.0
         self.particles = []
         self.blasts = []
         self.bullets = []
@@ -219,6 +223,10 @@ class StarDodger(FloatLayout):
         self.player_target_x = 0.5
         self.asteroids.clear()
         self.stars.clear()
+        self.powerups.clear()
+        self.powerup_spawn_time = 7.0
+        self.shield_time = 0.0
+        self.speed_boost_time = 0.0
         self.particles.clear()
         self.blasts.clear()
         self.bullets.clear()
@@ -365,9 +373,16 @@ class StarDodger(FloatLayout):
         self.score_time += dt
         self.background_drift = (self.background_drift + dt * 0.018) % 1.0
         # Smooth, frame-rate-independent movement follows the player's finger.
-        slide_factor = 1.0 - math.exp(-dt * 8.0)
+        slide_rate = 13.0 if self.speed_boost_time > 0 else 8.0
+        slide_factor = 1.0 - math.exp(-dt * slide_rate)
         self.player_x += (self.player_target_x - self.player_x) * slide_factor
         self.shower_time = max(0.0, self.shower_time - dt)
+        self.shield_time = max(0.0, self.shield_time - dt)
+        self.speed_boost_time = max(0.0, self.speed_boost_time - dt)
+        self.powerup_spawn_time -= dt
+        if self.powerup_spawn_time <= 0:
+            self.powerups.append([uniform(0.10, 0.90), 1.08, randint(0, 2)])
+            self.powerup_spawn_time = uniform(13.0, 19.0)
 
         if self.level_time >= 20:
             self.level_time -= 20
@@ -443,8 +458,12 @@ class StarDodger(FloatLayout):
                 self.boss_shots.remove(shot)
             elif abs(shot[1] - 0.14) < 0.045 and abs(shot[0] - self.player_x) < 0.038:
                 self.boss_shots.remove(shot)
-                self.lives -= 1
-                self.explode(shot[0], shot[1], 16)
+                if self.shield_time > 0:
+                    self.shield_time = 0.0
+                    self.explode(shot[0], shot[1], 22)
+                else:
+                    self.lives -= 1
+                    self.explode(shot[0], shot[1], 16)
 
         # Use a tighter collision box than the visible ship and meteor glow.
         # The meteor must overlap both horizontally and vertically to cause damage.
@@ -455,8 +474,12 @@ class StarDodger(FloatLayout):
             elif (abs(meteor[1] - 0.14) < 0.065 + 0.012 * meteor[2]
                   and abs(meteor[0] - self.player_x) < 0.035 + 0.012 * meteor[2]):
                 self.asteroids.remove(meteor)
-                self.lives -= 1
-                self.explode(meteor[0], meteor[1], 20)
+                if self.shield_time > 0:
+                    self.shield_time = 0.0
+                    self.explode(meteor[0], meteor[1], 26)
+                else:
+                    self.lives -= 1
+                    self.explode(meteor[0], meteor[1], 20)
 
         for star in self.stars[:]:
             star[1] -= dt * 0.3
@@ -466,6 +489,22 @@ class StarDodger(FloatLayout):
                 self.stars.remove(star)
                 self.score += 15
                 self.explode(star[0], star[1], 9)
+
+        for pickup in self.powerups[:]:
+            pickup[1] -= dt * 0.24
+            if pickup[1] < -0.08:
+                self.powerups.remove(pickup)
+            elif pickup[1] < 0.19 and abs(pickup[0] - self.player_x) < 0.085:
+                self.powerups.remove(pickup)
+                if pickup[2] == 0:
+                    self.shield_time = 7.0
+                    self.explode(pickup[0], pickup[1], 20)
+                elif pickup[2] == 1:
+                    self.score += 100
+                    self.explode(pickup[0], pickup[1], 18)
+                else:
+                    self.speed_boost_time = 6.0
+                    self.explode(pickup[0], pickup[1], 20)
 
         for blast in self.blasts[:]:
             blast[2] += dt
@@ -485,7 +524,14 @@ class StarDodger(FloatLayout):
 
         boss_text = f"   BOSS {self.boss[2]}/{self.boss[3]}" if self.boss else ""
         self.info.text = f"LEVEL {self.level}       ♥ {self.lives} LIVES{boss_text}\nSCORE {self.score}"
-        self.hint.text = "⚠  BOSS INCOMING!" if self.boss_notice > 0 else ("DEFEAT THE BOSS!" if self.boss else "DODGE METEORS • COLLECT STARS")
+        if self.boss_notice > 0:
+            self.hint.text = "⚠  BOSS INCOMING!"
+        elif self.shield_time > 0:
+            self.hint.text = f"SHIELD ACTIVE  {self.shield_time:.1f}s"
+        elif self.speed_boost_time > 0:
+            self.hint.text = f"SPEED BOOST  {self.speed_boost_time:.1f}s"
+        else:
+            self.hint.text = "DEFEAT THE BOSS!" if self.boss else "DODGE METEORS • COLLECT STARS • GRAB POWER-UPS"
         self.redraw()
         return True
 
@@ -740,7 +786,8 @@ class StarDodger(FloatLayout):
                     if self.boss_notice > 0:
                         Color(1, 0.25, 0.35, 1)
 
-                for mx, my, scale, fall_speed in self.asteroids:
+                for meteor in self.asteroids:
+                    mx, my, scale, fall_speed = meteor[:4]
                     x, y = self.x + mx * w, self.y + my * h
                     r = 15 * scale
                     variant = meteor[4] if len(meteor) > 4 else 0
@@ -806,6 +853,35 @@ class StarDodger(FloatLayout):
                     Ellipse(pos=(x - 17, y - 3), size=(34, 34))
                     Color(1, 0.84, 0.22, 1)
                     Ellipse(pos=(x - 8, y + 1), size=(16, 16))
+
+                # Collectible power-up capsules: cyan shield, gold score, green speed.
+                pickup_styles = (
+                    ((0.10, 0.72, 1, 0.22), (0.18, 0.82, 1, 1)),
+                    ((1, 0.68, 0.08, 0.22), (1, 0.82, 0.18, 1)),
+                    ((0.12, 1, 0.48, 0.22), (0.20, 1, 0.56, 1))
+                )
+                for power_x, power_y, power_type in self.powerups:
+                    x, y = self.x + power_x * w, self.y + power_y * h
+                    glow, core = pickup_styles[power_type]
+                    Color(*glow)
+                    Ellipse(pos=(x - 19, y - 19), size=(38, 38))
+                    Color(*core)
+                    Line(circle=(x, y, 12), width=2.2)
+                    if power_type == 0:
+                        # Shield emblem.
+                        Line(points=[x, y + 8, x + 7, y + 4, x + 6, y - 4,
+                                     x, y - 9, x - 6, y - 4, x - 7, y + 4, x, y + 8], width=2)
+                    elif power_type == 1:
+                        self.draw_canvas_text("+", x - 6, y - 7, 17, (1, 0.91, 0.45, 1))
+                    else:
+                        Line(points=[x + 2, y + 9, x - 5, y - 1, x + 1, y - 1,
+                                     x - 2, y - 9, x + 7, y + 2, x + 1, y + 2], width=2.2)
+
+                if self.shield_time > 0:
+                    Color(0.12, 0.82, 1, 0.30 + 0.12 * math.sin(self.level_time * 8))
+                    Line(circle=(px, py, 48), width=2.8)
+                    Color(0.55, 0.96, 1, 0.65)
+                    Line(circle=(px, py, 42), width=1.0)
 
             # Neon angular HUD: three separate panels, glowing edges and ship-shaped lives.
             if self.screen == "game":
