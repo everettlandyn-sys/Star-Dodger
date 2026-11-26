@@ -17,6 +17,8 @@ class StarDodger(FloatLayout):
         self.lives = 3
         self.player_x = 0.5
         self.player_target_x = 0.5
+        self.player_y = 0.14
+        self.player_target_y = 0.14
         self.asteroids = []
         self.stars = []
         self.powerups = []
@@ -243,6 +245,8 @@ class StarDodger(FloatLayout):
         self.lives = 3
         self.player_x = 0.5
         self.player_target_x = 0.5
+        self.player_y = 0.14
+        self.player_target_y = 0.14
         self.asteroids.clear()
         self.stars.clear()
         self.powerups.clear()
@@ -285,7 +289,7 @@ class StarDodger(FloatLayout):
         self.update_hud()
         self.set_visible(self.pause_button, True)
         self.info.text = "LEVEL 1       ♥ 3 LIVES\nSCORE 0"
-        self.hint.text = "TOUCH AND DRAG ANYWHERE TO STEER"
+        self.hint.text = "DRAG ANYWHERE TO FLY  •  LEFT / RIGHT / UP / DOWN"
         self.redraw()
         Clock.schedule_interval(self.update, 1 / 60)
 
@@ -393,10 +397,11 @@ class StarDodger(FloatLayout):
             # Arrow taps set a destination; glide toward it instead of teleporting.
             self.player_target_x = max(0.07, min(0.93, self.player_target_x + amount))
 
-    def move_player_to(self, x):
-        if self.width > 0:
-            self.player_x = max(0.06, min(0.94, (x - self.x) / self.width))
-            self.player_target_x = self.player_x
+    def move_player_to(self, x, y):
+        if self.width > 0 and self.height > 0:
+            # Free-roam touch steering: both axes follow the finger smoothly.
+            self.player_target_x = max(0.055, min(0.945, (x - self.x) / self.width))
+            self.player_target_y = max(0.10, min(0.90, (y - self.y) / self.height))
             self.redraw()
 
     def on_touch_down(self, touch):
@@ -436,14 +441,14 @@ class StarDodger(FloatLayout):
         if super().on_touch_down(touch):
             return True
         if self.screen == "game":
-            self.move_player_to(touch.x)
+            self.move_player_to(touch.x, touch.y)
             touch.grab(self)
             return True
         return False
 
     def on_touch_move(self, touch):
         if self.screen == "game" and touch.grab_current is self:
-            self.move_player_to(touch.x)
+            self.move_player_to(touch.x, touch.y)
             return True
         return super().on_touch_move(touch)
 
@@ -467,7 +472,7 @@ class StarDodger(FloatLayout):
         """Pixel-space circle vs. the visible ship silhouette; glow is ignored."""
         w, h = self.width, self.height
         px = self.x + self.player_x * w
-        py = self.y + h * 0.14
+        py = self.y + self.player_y * h
         # Outer contour of the rendered wings and armored fuselage.
         polygon = [
             (px, py + 35), (px - 28, py - 19), (px - 18, py - 23),
@@ -510,6 +515,7 @@ class StarDodger(FloatLayout):
         slide_rate = 13.0 if self.speed_boost_time > 0 else 8.0
         slide_factor = 1.0 - math.exp(-dt * slide_rate)
         self.player_x += (self.player_target_x - self.player_x) * slide_factor
+        self.player_y += (self.player_target_y - self.player_y) * slide_factor
         self.shower_time = max(0.0, self.shower_time - dt)
         self.shield_time = max(0.0, self.shield_time - dt)
         self.speed_boost_time = max(0.0, self.speed_boost_time - dt)
@@ -556,7 +562,7 @@ class StarDodger(FloatLayout):
         self.shot_time += dt
         if self.shot_time >= 0.42:
             self.shot_time = 0.0
-            self.bullets.append([self.player_x, 0.22])
+            self.bullets.append([self.player_x, min(1.04, self.player_y + 0.08)])
 
         for bullet in self.bullets[:]:
             bullet[1] += dt * 1.05
@@ -1153,7 +1159,7 @@ class StarDodger(FloatLayout):
                 Ellipse(pos=(cx - 7, cy - 43), size=(14, 23))
 
             if self.screen == "game":
-                px, py = self.x + self.player_x * w, self.y + h * 0.14
+                px, py = self.x + self.player_x * w, self.y + self.player_y * h
                 Color(0.05, 0.65, 1, 0.2)
                 Ellipse(pos=(px - 34, py - 22), size=(68, 68))
                 # Layered, flickering engine plume behind the ship.
