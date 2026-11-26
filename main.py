@@ -64,6 +64,20 @@ class StarDodger(FloatLayout):
         self.settings_button = self.make_button("⚙  SETTINGS", (0.64, 0.075), 0.37)
         self.settings_button.bind(on_press=self.show_settings)
 
+        self.help_button = self.make_button("HOW TO PLAY", (0.64, 0.075), 0.25)
+        self.help_button.bind(on_press=self.show_help)
+        self.help_text = self.make_label(
+            "DRAG LEFT OR RIGHT TO STEER\\n"
+            "DODGE METEORS AND ENEMY FIRE\\n"
+            "COLLECT STARS AND POWER-UPS\\n"
+            "DEFEAT A BOSS EVERY 5 LEVELS\\n"
+            "YOU HAVE 3 LIVES",
+            15, 0.43
+        )
+        self.help_text.text_size = (self.width * 0.82, None)
+        self.help_back_button = self.make_button("←  BACK TO MENU", (0.64, 0.075), 0.22)
+        self.help_back_button.bind(on_press=self.show_home)
+
         self.retry_button = self.make_button("PLAY AGAIN", (0.64, 0.085), 0.43)
         self.retry_button.bind(on_press=self.start_game)
         self.home_button = self.make_button("MAIN MENU", (0.64, 0.075), 0.31)
@@ -208,6 +222,32 @@ class StarDodger(FloatLayout):
             button.color = (0.02, 0.06, 0.12, 1) if selected else (0.8, 0.9, 1, 1)
         self.set_visible(self.resume_button, False)
         self.set_visible(self.pause_home_button, False)
+        self.hide_game_controls()
+        self.redraw()
+
+    def show_help(self, *args):
+        Clock.unschedule(self.update)
+        self.game_started = False
+        self.screen = "help"
+        self.title.text = "[b]HOW TO PLAY[/b]"
+        self.title.markup = True
+        self.subtitle.text = "SURVIVE THE SECTORS"
+        self.info.text = ""
+        self.hint.text = ""
+        self.set_visible(self.title, True)
+        self.set_visible(self.subtitle, True)
+        self.set_visible(self.info, False)
+        for hud in (self.hud_level, self.hud_lives, self.hud_score):
+            self.set_visible(hud, False)
+        for widget in (self.play_button, self.settings_button, self.help_button,
+                       self.retry_button, self.home_button, self.difficulty_label,
+                       self.back_button, self.resume_button, self.pause_home_button):
+            self.set_visible(widget, False)
+        for button in self.difficulty_buttons:
+            self.set_visible(button, False)
+        self.set_visible(self.help_text, True)
+        self.set_visible(self.help_back_button, True)
+        self.set_visible(self.hint, False)
         self.hide_game_controls()
         self.redraw()
 
