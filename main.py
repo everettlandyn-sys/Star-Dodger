@@ -1454,7 +1454,8 @@ class StarDodger(FloatLayout):
                 for meteor in self.asteroids:
                     mx, my, scale, fall_speed = meteor[:4]
                     x, y = self.x + mx * w, self.y + my * h
-                    r = 15 * scale
+                    # Larger visuals, while the separate collision radius stays fair.
+                    r = 20 * scale
                     variant = meteor[4] if len(meteor) > 4 else 0
                     rotation = meteor[5] if len(meteor) > 5 else 0.0
                     # A layered hot tail makes each falling meteor readable in motion.
