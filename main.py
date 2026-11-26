@@ -198,33 +198,16 @@ class StarDodger(FloatLayout):
         Clock.unschedule(self.update)
         self.game_started = False
         self.screen = "settings"
-        self.title.text = "[b]SETTINGS[/b]"
-        self.title.markup = True
-        self.subtitle.text = "CHOOSE YOUR DIFFICULTY"
-        self.info.text = ""
-        self.hint.text = ""
-        self.set_visible(self.title, True)
-        self.set_visible(self.subtitle, True)
-        self.set_visible(self.info, False)
-        for hud in (self.hud_level, self.hud_lives, self.hud_score):
-            self.set_visible(hud, False)
-        self.set_visible(self.hint, False)
-        self.set_visible(self.play_button, False)
-        self.set_visible(self.settings_button, False)
-        self.set_visible(self.help_button, False)
-        self.set_visible(self.help_text, False)
-        self.set_visible(self.help_back_button, False)
-        self.set_visible(self.retry_button, False)
-        self.set_visible(self.home_button, False)
-        self.set_visible(self.difficulty_label, True)
-        self.set_visible(self.back_button, True)
-        for button in self.difficulty_buttons:
-            self.set_visible(button, True)
-            selected = button.text.title() == self.difficulty
-            button.background_color = (0.08, 0.68, 0.9, 1) if selected else (0.12, 0.22, 0.38, 1)
-            button.color = (0.02, 0.06, 0.12, 1) if selected else (0.8, 0.9, 1, 1)
-        self.set_visible(self.resume_button, False)
-        self.set_visible(self.pause_home_button, False)
+        # Settings are rendered and hit-tested on the root canvas, just like
+        # the home menu. This avoids Android child-button touch/layout issues.
+        for widget in (self.title, self.subtitle, self.info, self.hint,
+                       self.hud_level, self.hud_lives, self.hud_score,
+                       self.play_button, self.settings_button, self.help_button,
+                       self.help_text, self.help_back_button, self.retry_button,
+                       self.home_button, self.difficulty_label, self.back_button,
+                       *self.difficulty_buttons, self.pause_button,
+                       self.resume_button, self.pause_home_button):
+            self.set_visible(widget, False)
         self.hide_game_controls()
         self.redraw()
 
@@ -232,25 +215,16 @@ class StarDodger(FloatLayout):
         Clock.unschedule(self.update)
         self.game_started = False
         self.screen = "help"
-        self.title.text = "[b]HOW TO PLAY[/b]"
-        self.title.markup = True
-        self.subtitle.text = "SURVIVE THE SECTORS"
-        self.info.text = ""
-        self.hint.text = ""
-        self.set_visible(self.title, True)
-        self.set_visible(self.subtitle, True)
-        self.set_visible(self.info, False)
-        for hud in (self.hud_level, self.hud_lives, self.hud_score):
-            self.set_visible(hud, False)
-        for widget in (self.play_button, self.settings_button, self.help_button,
-                       self.retry_button, self.home_button, self.difficulty_label,
-                       self.back_button, self.resume_button, self.pause_home_button):
+        # Help is also canvas-native so it remains readable and tappable
+        # across Android screen sizes and touch configurations.
+        for widget in (self.title, self.subtitle, self.info, self.hint,
+                       self.hud_level, self.hud_lives, self.hud_score,
+                       self.play_button, self.settings_button, self.help_button,
+                       self.help_text, self.help_back_button, self.retry_button,
+                       self.home_button, self.difficulty_label, self.back_button,
+                       *self.difficulty_buttons, self.pause_button,
+                       self.resume_button, self.pause_home_button):
             self.set_visible(widget, False)
-        for button in self.difficulty_buttons:
-            self.set_visible(button, False)
-        self.set_visible(self.help_text, True)
-        self.set_visible(self.help_back_button, True)
-        self.set_visible(self.hint, False)
         self.hide_game_controls()
         self.redraw()
 
@@ -382,20 +356,36 @@ class StarDodger(FloatLayout):
             self.redraw()
 
     def on_touch_down(self, touch):
-        # The home menu is drawn directly on the root canvas, so route its
-        # touch zones here instead of relying on child Button widgets.
-        if self.screen == "home" and self.height > 0:
+        # All menu screens use explicit canvas hit zones for reliable Android taps.
+        if self.screen in ("home", "settings", "help") and self.height > 0 and self.width > 0:
             nx = (touch.x - self.x) / self.width
             ny = (touch.y - self.y) / self.height
             if 0.16 <= nx <= 0.84:
-                if 0.445 <= ny <= 0.535:
-                    self.start_game()
-                    return True
-                if 0.325 <= ny <= 0.415:
-                    self.show_settings()
-                    return True
-                if 0.205 <= ny <= 0.295:
-                    self.show_help()
+                if self.screen == "home":
+                    if 0.445 <= ny <= 0.535:
+                        self.start_game()
+                        return True
+                    if 0.325 <= ny <= 0.415:
+                        self.show_settings()
+                        return True
+                    if 0.205 <= ny <= 0.295:
+                        self.show_help()
+                        return True
+                elif self.screen == "settings":
+                    if 0.415 <= ny <= 0.505:
+                        self.set_difficulty("Easy")
+                        return True
+                    if 0.315 <= ny <= 0.405:
+                        self.set_difficulty("Normal")
+                        return True
+                    if 0.215 <= ny <= 0.305:
+                        self.set_difficulty("Hard")
+                        return True
+                    if 0.105 <= ny <= 0.195:
+                        self.show_home()
+                        return True
+                elif self.screen == "help" and 0.105 <= ny <= 0.195:
+                    self.show_home()
                     return True
             return True
         # Let gameplay controls (including pause) receive their tap first.
@@ -653,6 +643,53 @@ class StarDodger(FloatLayout):
         self.draw_centered_canvas_text("TOUCH PLAY TO START",
                                        self.x + w * 0.5, self.y + h * 0.155,
                                        max(10, w * 0.024), (0.42, 0.72, 0.9, 1))
+
+    def draw_menu_panel(self, w, h, heading, subtitle):
+        panel_w, panel_h = w * 0.82, h * 0.72
+        panel_x, panel_y = self.x + (w - panel_w) / 2, self.y + h * 0.10
+        Color(0.005, 0.018, 0.055, 0.88)
+        Rectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h))
+        Color(0.12, 0.72, 1, 0.9)
+        Line(rectangle=(panel_x, panel_y, panel_w, panel_h), width=1.4)
+        self.draw_centered_canvas_text(heading, self.x + w * 0.5,
+                                       self.y + h * 0.80, max(27, w * 0.067),
+                                       (0.88, 0.97, 1, 1))
+        self.draw_centered_canvas_text(subtitle, self.x + w * 0.5,
+                                       self.y + h * 0.70, max(11, w * 0.027),
+                                       (0.48, 0.86, 1, 1))
+
+    def draw_settings_menu(self, w, h):
+        self.draw_menu_panel(w, h, "SETTINGS", "CHOOSE YOUR DIFFICULTY")
+        for label, cy in (("EASY", 0.46), ("NORMAL", 0.36), ("HARD", 0.26)):
+            selected = label.title() == self.difficulty
+            bx, by, bw, bh = self.x + w * 0.18, self.y + h * (cy - 0.042), w * 0.64, h * 0.084
+            Color(0.04, 0.55, 0.82, 1) if selected else Color(0.08, 0.22, 0.40, 1)
+            Rectangle(pos=(bx, by), size=(bw, bh))
+            Color(0.22, 0.82, 1, 0.95)
+            Line(rectangle=(bx, by, bw, bh), width=1.25)
+            self.draw_centered_canvas_text(label, self.x + w * 0.5,
+                                           self.y + h * cy, max(16, w * 0.039),
+                                           (0.94, 0.98, 1, 1))
+        self.draw_centered_canvas_text("←  BACK TO MENU", self.x + w * 0.5,
+                                       self.y + h * 0.15, max(13, w * 0.031),
+                                       (0.55, 0.88, 1, 1))
+
+    def draw_help_menu(self, w, h):
+        self.draw_menu_panel(w, h, "HOW TO PLAY", "SURVIVE THE SECTORS")
+        instructions = (
+            "DRAG LEFT OR RIGHT TO STEER",
+            "DODGE METEORS AND ENEMY FIRE",
+            "COLLECT STARS AND POWER-UPS",
+            "BOSSES APPEAR EVERY 5 LEVELS",
+            "YOU HAVE 3 LIVES",
+        )
+        for index, line in enumerate(instructions):
+            self.draw_centered_canvas_text(line, self.x + w * 0.5,
+                                           self.y + h * (0.55 - index * 0.075),
+                                           max(12, w * 0.030), (0.86, 0.94, 1, 1))
+        self.draw_centered_canvas_text("←  BACK TO MENU", self.x + w * 0.5,
+                                       self.y + h * 0.15, max(13, w * 0.031),
+                                       (0.55, 0.88, 1, 1))
 
     def redraw(self, *args):
         self.canvas.clear()
@@ -1051,6 +1088,10 @@ class StarDodger(FloatLayout):
 
             if self.screen == "home":
                 self.draw_home_menu(w, h)
+            elif self.screen == "settings":
+                self.draw_settings_menu(w, h)
+            elif self.screen == "help":
+                self.draw_help_menu(w, h)
 
 
 class StarDodgerApp(App):
