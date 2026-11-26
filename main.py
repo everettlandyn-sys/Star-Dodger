@@ -321,30 +321,67 @@ class StarDodger(FloatLayout):
         Clock.unschedule(self.update)
         self.game_started = False
         self.screen = "over"
+        self.is_new_best = self.score > self.best_score
         self.best_score = max(self.best_score, self.score)
-        self.title.text = "[b]GAME[/b] [color=ff657a]OVER[/color]"
-        self.title.markup = True
-        self.subtitle.text = "RUN COMPLETE"
-        self.info.pos_hint = {"center_x": 0.5, "center_y": 0.55}
-        self.info.height = 112
-        self.info.font_size = "20sp"
-        self.info.text = (
-            f"[b]FINAL SCORE  {self.score}[/b]\n"
-            f"LEVEL REACHED  {self.level}\n"
-            f"BEST SCORE  {self.best_score}"
-        )
-        self.info.markup = True
-        self.hint.text = "TRY AGAIN AND REACH THE NEXT SECTOR"
+        # The fail screen is drawn directly on the game canvas for consistent
+        # sizing on Android devices; only the two action buttons remain widgets.
         for widget in (self.title, self.subtitle, self.info, self.hint):
-            self.set_visible(widget, True)
+            self.set_visible(widget, False)
         for hud in (self.hud_level, self.hud_lives, self.hud_score):
             self.set_visible(hud, False)
+        self.retry_button.text = "↻  PLAY AGAIN"
+        self.retry_button.pos_hint = {"center_x": 0.5, "center_y": 0.405}
+        self.home_button.text = "⌂  MAIN MENU"
+        self.home_button.pos_hint = {"center_x": 0.5, "center_y": 0.285}
         self.set_visible(self.retry_button, True)
         self.set_visible(self.home_button, True)
         self.set_visible(self.play_button, False)
         self.set_visible(self.settings_button, False)
+        self.set_visible(self.help_button, False)
         self.hide_game_controls()
         self.redraw()
+
+    def draw_game_over(self, w, h):
+        panel_w, panel_h = w * 0.84, h * 0.62
+        panel_x = self.x + (w - panel_w) * 0.5
+        panel_y = self.y + h * 0.18
+        # Soft red/cyan glow around a rounded dark-glass results card.
+        Color(1.0, 0.18, 0.30, 0.13)
+        RoundedRectangle(pos=(panel_x - 5, panel_y - 5),
+                         size=(panel_w + 10, panel_h + 10), radius=[30])
+        Color(0.008, 0.018, 0.055, 0.96)
+        RoundedRectangle(pos=(panel_x, panel_y),
+                         size=(panel_w, panel_h), radius=[27])
+        Color(1.0, 0.30, 0.42, 0.95)
+        Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 27), width=1.8)
+        self.draw_centered_canvas_text("RUN OVER", self.x + w * 0.5,
+                                       self.y + h * 0.79, max(29, w * 0.073),
+                                       (1.0, 0.48, 0.58, 1))
+        self.draw_centered_canvas_text("YOUR SHIP HAS LEFT THIS SECTOR",
+                                       self.x + w * 0.5, self.y + h * 0.715,
+                                       max(10, w * 0.025), (0.55, 0.78, 0.92, 1))
+
+        # Score gets the strongest visual emphasis.
+        score_y = self.y + h * 0.575
+        Color(0.10, 0.62, 1, 0.15)
+        RoundedRectangle(pos=(self.x + w * 0.22, score_y - h * 0.075),
+                         size=(w * 0.56, h * 0.15), radius=[22])
+        self.draw_centered_canvas_text("FINAL SCORE", self.x + w * 0.5,
+                                       score_y + h * 0.035, max(12, w * 0.03),
+                                       (0.55, 0.86, 1, 1))
+        self.draw_centered_canvas_text(str(self.score), self.x + w * 0.5,
+                                       score_y - h * 0.025, max(32, w * 0.095),
+                                       (0.94, 0.99, 1, 1))
+
+        stat_y = self.y + h * 0.405
+        self.draw_centered_canvas_text(f"LEVEL REACHED   {self.level}",
+                                       self.x + w * 0.5, stat_y,
+                                       max(14, w * 0.035), (0.65, 0.90, 1, 1))
+        best_label = "NEW BEST SCORE!" if self.is_new_best else f"BEST SCORE   {self.best_score}"
+        best_color = (1.0, 0.82, 0.32, 1) if self.is_new_best else (0.45, 1.0, 0.78, 1)
+        self.draw_centered_canvas_text(best_label, self.x + w * 0.5,
+                                       self.y + h * 0.335,
+                                       max(13, w * 0.032), best_color)
 
     def shift_player(self, amount):
         if self.screen == "game":
@@ -1215,6 +1252,8 @@ class StarDodger(FloatLayout):
                 self.draw_settings_menu(w, h)
             elif self.screen == "help":
                 self.draw_help_menu(w, h)
+            elif self.screen == "over":
+                self.draw_game_over(w, h)
 
 
 class StarDodgerApp(App):
