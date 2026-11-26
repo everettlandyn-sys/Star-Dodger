@@ -4,7 +4,7 @@ from random import randint, uniform
 from kivy.app import App
 from kivy.core.text import Label as CoreLabel
 from kivy.clock import Clock
-from kivy.graphics import Color, Ellipse, Line, Rectangle, Triangle
+from kivy.graphics import Color, Ellipse, Line, Rectangle, Triangle, PushMatrix, PopMatrix, Translate
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
@@ -708,9 +708,16 @@ class StarDodger(FloatLayout):
             ((0.035, 0.008, 0.075, 1), (0.16, 0.035, 0.30, 0.32), (0.28, 0.025, 0.24, 0.22), (0.82, 0.52, 1, 0.85)),
             ((0.008, 0.055, 0.035, 1), (0.025, 0.22, 0.12, 0.30), (0.08, 0.18, 0.045, 0.24), (0.48, 1, 0.65, 0.85)),
         ]
+        travel_progress = 0.0
+        if self.screen == "game" and self.transition_time > 0:
+            raw_progress = 1.0 - self.transition_time / self.transition_duration
+            travel_progress = raw_progress * raw_progress * (3.0 - 2.0 * raw_progress)
         scene_level = max(1, self.level - 1) if self.transition_time > 0 else max(1, self.level)
         bg, glow_a, glow_b, star_tint = themes[(scene_level - 1) % len(themes)]
         with self.canvas:
+            # Current sector moves down and out of view as the ship climbs.
+            PushMatrix()
+            Translate(0, -h * travel_progress, 0)
             Color(*bg)
             Rectangle(pos=self.pos, size=self.size)
             Color(*glow_a)
@@ -804,48 +811,108 @@ class StarDodger(FloatLayout):
             Color(0.65, 0.90, 1, 0.45)
             Line(ellipse=(far_x - far_r * 1.9, far_y - far_r * 0.45,
                           far_r * 3.8, far_r * 0.9), width=1.3)
+            PopMatrix()
 
-            # Slide the incoming sector in from the right over the old world.
+            # The next sector enters from above and scrolls down into place.
             if self.screen == "game" and self.transition_time > 0:
-                progress = self.transition_time / self.transition_duration
-                eased = progress * progress * (3.0 - 2.0 * progress)
-                offset = w * eased
                 next_level = max(1, self.level)
-                next_bg, next_glow_a, next_glow_b, next_star = themes[(next_level - 1) % len(themes)]
-                incoming_x = self.x + w - offset
+                next_bg, next_glow_a, next_glow_b, next_star_tint = themes[(next_level - 1) % len(themes)]
+                PushMatrix()
+                Translate(0, h * (1.0 - travel_progress), 0)
                 Color(*next_bg)
-                Rectangle(pos=(incoming_x, self.y), size=(w, h))
+                Rectangle(pos=self.pos, size=self.size)
                 Color(*next_glow_a)
-                Ellipse(pos=(incoming_x + w * 0.06, self.y + h * 0.48), size=(w * 0.9, h * 0.48))
+                Ellipse(pos=(self.x + w * 0.06, self.y + h * 0.48), size=(w * 0.9, h * 0.48))
                 Color(*next_glow_b)
-                Ellipse(pos=(incoming_x + w * 0.32, self.y + h * 0.1), size=(w * 0.8, h * 0.42))
-                Color(next_star[0], next_star[1], next_star[2], 0.12)
-                Ellipse(pos=(incoming_x + w * 0.12, self.y + h * 0.43), size=(w * 0.62, h * 0.20))
-                # New sector stars and its signature planet travel in with the scene.
+                Ellipse(pos=(self.x + w * 0.32, self.y + h * 0.1), size=(w * 0.8, h * 0.42))
+                # Layered nebula clouds: overlapping soft color fields make each sector feel deeper.
+                nebula_shift = (next_level - 1) % 5
+                nebula_x = self.x + w * (0.12 + nebula_shift * 0.13)
+                Color(next_star_tint[0], next_star_tint[1], next_star_tint[2], 0.10)
+                Ellipse(pos=(nebula_x - w * 0.22, self.y + h * 0.43), size=(w * 0.62, h * 0.20))
+                Color(next_glow_b[0], next_glow_b[1], next_glow_b[2], 0.16)
+                Ellipse(pos=(nebula_x + w * 0.05, self.y + h * 0.30), size=(w * 0.58, h * 0.18))
+                Color(next_glow_a[0], next_glow_a[1], next_glow_a[2], 0.13)
+                Ellipse(pos=(nebula_x - w * 0.30, self.y + h * 0.62), size=(w * 0.55, h * 0.13))
+    
+                # Retro pixel-art starfield: crisp square stars and occasional plus-shaped glints.
+                pixel_colors = [
+                    (0.16, 0.35, 1.0, 0.95), (0.55, 0.12, 1.0, 0.9),
+                    (0.05, 0.85, 1.0, 0.9), (0.92, 0.30, 1.0, 0.85),
+                    (0.25, 0.95, 0.75, 0.85)
+                ]
                 for index, (sx, sy, radius) in enumerate(self.background_stars):
-                    if index % 2 == 0:
-                        Color(*((0.16, 0.35, 1.0, 0.95), (0.55, 0.12, 1.0, 0.9),
-                                (0.05, 0.85, 1.0, 0.9), (0.92, 0.30, 1.0, 0.85),
-                                (0.25, 0.95, 0.75, 0.85))[index % 5])
-                        star_x = incoming_x + sx * w
-                        star_y = self.y + sy * h
-                        pixel = max(2, radius * 2.0)
-                        Rectangle(pos=(star_x, star_y), size=(pixel, pixel))
-                incoming_planet_x = incoming_x + w * (0.72 if next_level % 2 else 0.24)
-                incoming_planet_y = self.y + h * (0.79 if next_level % 3 else 0.67)
-                incoming_radius = min(w, h) * 0.105
-                planet_palette = ((0.05, 0.78, 0.72, 1), (0.40, 0.20, 0.95, 1),
-                                  (0.95, 0.25, 0.72, 1), (0.12, 0.48, 1, 1),
-                                  (0.28, 0.82, 0.95, 1))
+                    tint = pixel_colors[index % len(pixel_colors)]
+                    px = self.x + sx * w
+                    drift = self.background_drift * (0.35 + (index % 5) * 0.12)
+                    py = self.y + ((sy - drift) % 1.0) * h
+                    pixel = max(2, radius * 2.0)
+                    Color(*tint)
+                    Rectangle(pos=(px, py), size=(pixel, pixel))
+                    if index % 17 == 0:
+                        Rectangle(pos=(px - 1, py - 5), size=(pixel + 2, 12))
+                        Rectangle(pos=(px - 5, py - 1), size=(12, pixel + 2))
+    
+                # Large pixel-space planets with neon halos and ring details.
+                planet_x = self.x + w * (0.72 if next_level % 2 else 0.24)
+                planet_y = self.y + h * (0.79 if next_level % 3 else 0.67)
+                planet_r = min(w, h) * 0.105
+                planet_colors = [
+                    (0.05, 0.78, 0.72, 1), (0.40, 0.20, 0.95, 1),
+                    (0.95, 0.25, 0.72, 1), (0.12, 0.48, 1, 1),
+                    (0.28, 0.82, 0.95, 1)
+                ]
+                planet_color = planet_colors[(next_level - 1) % len(planet_colors)]
                 Color(0.18, 0.10, 1, 0.18)
-                Ellipse(pos=(incoming_planet_x - incoming_radius * 1.65,
-                             incoming_planet_y - incoming_radius * 1.65),
-                        size=(incoming_radius * 3.3, incoming_radius * 3.3))
-                Color(*planet_palette[(next_level - 1) % len(planet_palette)])
-                Ellipse(pos=(incoming_planet_x - incoming_radius,
-                             incoming_planet_y - incoming_radius),
-                        size=(incoming_radius * 2, incoming_radius * 2))
-
+                Ellipse(pos=(planet_x - planet_r * 1.65, planet_y - planet_r * 1.65),
+                        size=(planet_r * 3.3, planet_r * 3.3))
+                Color(0.12, 0.20, 0.95, 0.75)
+                Line(ellipse=(planet_x - planet_r * 1.55, planet_y - planet_r * 0.52,
+                              planet_r * 3.1, planet_r * 1.05), width=2.0)
+                Color(*planet_color)
+                Ellipse(pos=(planet_x - planet_r, planet_y - planet_r),
+                        size=(planet_r * 2, planet_r * 2))
+                Color(0.02, 0.10, 0.45, 0.28)
+                for band in range(4):
+                    Rectangle(pos=(planet_x - planet_r * 0.78,
+                                   planet_y - planet_r * 0.55 + band * planet_r * 0.34),
+                              size=(planet_r * (1.2 + (band % 2) * 0.25), planet_r * 0.12))
+                # Surface highlights, shadow edge and tiny crater details.
+                Color(0.72, 0.98, 1, 0.22)
+                Ellipse(pos=(planet_x - planet_r * 0.66, planet_y + planet_r * 0.22),
+                        size=(planet_r * 0.72, planet_r * 0.30))
+                Color(0.005, 0.025, 0.16, 0.28)
+                Ellipse(pos=(planet_x + planet_r * 0.28, planet_y - planet_r * 0.68),
+                        size=(planet_r * 0.52, planet_r * 1.32))
+                Color(0.01, 0.16, 0.36, 0.34)
+                for crater_x, crater_y, crater_size in ((-0.38, 0.12, 0.13), (0.34, 0.28, 0.09), (-0.12, -0.35, 0.08)):
+                    Ellipse(pos=(planet_x + planet_r * crater_x - planet_r * crater_size,
+                                planet_y + planet_r * crater_y - planet_r * crater_size),
+                            size=(planet_r * crater_size * 2, planet_r * crater_size * 2))
+    
+                # A second, smaller moon and a distant ringed planet create a real multi-world scene.
+                moon_x = self.x + w * (0.18 if next_level % 2 else 0.82)
+                moon_y = self.y + h * (0.56 if next_level % 3 else 0.39)
+                moon_r = min(w, h) * 0.037
+                Color(0.55, 0.72, 1, 0.12)
+                Ellipse(pos=(moon_x - moon_r * 1.5, moon_y - moon_r * 1.5), size=(moon_r * 3, moon_r * 3))
+                Color(0.42, 0.58, 0.78, 1)
+                Ellipse(pos=(moon_x - moon_r, moon_y - moon_r), size=(moon_r * 2, moon_r * 2))
+                Color(0.10, 0.20, 0.36, 0.55)
+                for crater_dx, crater_dy, crater_scale in ((-0.3, 0.2, 0.18), (0.28, -0.2, 0.13), (0.05, 0.34, 0.10)):
+                    Ellipse(pos=(moon_x + moon_r * crater_dx - moon_r * crater_scale,
+                                 moon_y + moon_r * crater_dy - moon_r * crater_scale),
+                            size=(moon_r * crater_scale * 2, moon_r * crater_scale * 2))
+    
+                far_x = self.x + w * (0.84 if next_level % 2 else 0.16)
+                far_y = self.y + h * 0.30
+                far_r = min(w, h) * 0.020
+                Color(0.35, 0.72, 1, 0.72)
+                Ellipse(pos=(far_x - far_r, far_y - far_r), size=(far_r * 2, far_r * 2))
+                Color(0.65, 0.90, 1, 0.45)
+                Line(ellipse=(far_x - far_r * 1.9, far_y - far_r * 0.45,
+                              far_r * 3.8, far_r * 0.9), width=1.3)
+                PopMatrix()
             if self.screen in ("home", "settings", "over", "paused"):
                 cx, cy = self.x + w * 0.5, self.y + h * 0.27
                 Color(0.10, 0.72, 1, 0.18)
