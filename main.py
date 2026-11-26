@@ -998,7 +998,13 @@ class StarDodger(FloatLayout):
 class StarDodgerApp(App):
     def build(self):
         self.title = "Star Dodger 2.0"
-        return StarDodger()
+        self.game = StarDodger()
+        return self.game
+
+    def on_start(self):
+        # Re-assert the home screen after Android/Kivy has finished attaching
+        # the root widget. This prevents startup from landing in gameplay.
+        Clock.schedule_once(lambda dt: self.game.show_home(), 0.25)
 
 
 if __name__ == "__main__":
