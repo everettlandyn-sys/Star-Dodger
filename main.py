@@ -561,12 +561,14 @@ class StarDodger(FloatLayout):
             self.stars.append([uniform(0.06, 0.94), 1.06, uniform(0, math.tau)])
 
         self.shot_time += dt
-        if self.shot_time >= 0.42:
+        if self.shot_time >= 0.22:
             self.shot_time = 0.0
-            self.bullets.append([self.player_x, min(1.04, self.player_y + 0.08)])
+            # Twin cannon bolts fire from the ship's wing mounts.
+            self.bullets.append([max(0.02, self.player_x - 0.045), min(1.04, self.player_y + 0.10)])
+            self.bullets.append([min(0.98, self.player_x + 0.045), min(1.04, self.player_y + 0.10)])
 
         for bullet in self.bullets[:]:
-            bullet[1] += dt * 1.05
+            bullet[1] += dt * 1.70
             if bullet[1] > 1.12:
                 self.bullets.remove(bullet)
 
@@ -1239,6 +1241,18 @@ class StarDodger(FloatLayout):
                 Ellipse(pos=(px + 22, py - 19), size=(5, 5))
                 Color(1, 0.42, 0.12, 0.95)
                 Triangle(points=[px, py - 42, px - 8, py - 18, px + 8, py - 18])
+
+                # Bright twin laser bolts are drawn above the ship and have a visible glow/trail.
+                for bullet_x, bullet_y in self.bullets:
+                    bx, by = self.x + bullet_x * w, self.y + bullet_y * h
+                    Color(0.05, 0.82, 1, 0.22)
+                    Ellipse(pos=(bx - 10, by - 20), size=(20, 48))
+                    Color(0.08, 0.88, 1, 0.95)
+                    Line(points=[bx, by - 17, bx, by + 15], width=4.2)
+                    Color(0.88, 1, 1, 1)
+                    Line(points=[bx, by - 12, bx, by + 12], width=1.8)
+                    Color(0.18, 0.95, 1, 0.9)
+                    Ellipse(pos=(bx - 3.5, by + 10), size=(7, 7))
 
                 for enemy in self.enemies:
                     ex, ey = self.x + enemy[0] * w, self.y + enemy[1] * h
