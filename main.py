@@ -179,25 +179,18 @@ class StarDodger(FloatLayout):
         self.info.font_size = "17sp"
         self.info.text = f"BEST SCORE  {self.best_score}" if self.best_score else "READY FOR YOUR NEXT RUN?"
         self.hint.text = "TAP PLAY TO START"
-        self.set_visible(self.title, True)
-        self.set_visible(self.subtitle, True)
-        self.set_visible(self.info, True)
-        for hud in (self.hud_level, self.hud_lives, self.hud_score):
-            self.set_visible(hud, False)
-        self.set_visible(self.hint, True)
-        self.set_visible(self.play_button, True)
-        self.set_visible(self.settings_button, True)
-        self.set_visible(self.help_button, True)
-        self.set_visible(self.help_text, False)
-        self.set_visible(self.help_back_button, False)
-        self.set_visible(self.retry_button, False)
-        self.set_visible(self.home_button, False)
-        self.set_visible(self.difficulty_label, False)
-        self.set_visible(self.back_button, False)
-        for button in self.difficulty_buttons:
-            self.set_visible(button, False)
-        self.set_visible(self.resume_button, False)
-        self.set_visible(self.pause_home_button, False)
+        # Home UI is rendered in the root canvas (not child widgets). This
+        # avoids Android/Kivy widget stacking and first-frame layout issues.
+        for widget in (
+            self.title, self.subtitle, self.info, self.hint,
+            self.hud_level, self.hud_lives, self.hud_score,
+            self.play_button, self.settings_button, self.help_button,
+            self.help_text, self.help_back_button, self.retry_button,
+            self.home_button, self.difficulty_label, self.back_button,
+            *self.difficulty_buttons, self.pause_button,
+            self.resume_button, self.pause_home_button
+        ):
+            self.set_visible(widget, False)
         self.hide_game_controls()
         self.redraw()
 
@@ -389,15 +382,29 @@ class StarDodger(FloatLayout):
             self.redraw()
 
     def on_touch_down(self, touch):
-        # Let the pause button receive its tap; all other gameplay touches steer.
+        # The home menu is drawn directly on the root canvas, so route its
+        # touch zones here instead of relying on child Button widgets.
+        if self.screen == "home" and self.height > 0:
+            nx = (touch.x - self.x) / self.width
+            ny = (touch.y - self.y) / self.height
+            if 0.16 <= nx <= 0.84:
+                if 0.445 <= ny <= 0.535:
+                    self.start_game()
+                    return True
+                if 0.325 <= ny <= 0.415:
+                    self.show_settings()
+                    return True
+                if 0.205 <= ny <= 0.295:
+                    self.show_help()
+                    return True
+            return True
+        # Let gameplay controls (including pause) receive their tap first.
         if super().on_touch_down(touch):
             return True
         if self.screen == "game":
             self.move_player_to(touch.x)
             touch.grab(self)
             return True
-        # The home screen only starts when the Play button is pressed.
-        # Taps elsewhere must not skip the main menu.
         return False
 
     def on_touch_move(self, touch):
@@ -598,6 +605,54 @@ class StarDodger(FloatLayout):
         texture = label.texture
         Color(1, 1, 1, 1)
         Rectangle(texture=texture, pos=(x, y), size=texture.size)
+
+    def draw_centered_canvas_text(self, text, center_x, center_y, font_size, color):
+        label = CoreLabel(text=text, font_size=font_size, bold=True, color=color)
+        label.refresh()
+        texture = label.texture
+        Color(1, 1, 1, 1)
+        Rectangle(texture=texture,
+                  pos=(center_x - texture.width / 2, center_y - texture.height / 2),
+                  size=texture.size)
+
+    def draw_home_menu(self, w, h):
+        # A canvas-native menu is always drawn above the space background.
+        panel_w, panel_h = w * 0.82, h * 0.66
+        panel_x, panel_y = self.x + (w - panel_w) / 2, self.y + h * 0.12
+        Color(0.005, 0.018, 0.055, 0.82)
+        Rectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h))
+        Color(0.12, 0.72, 1, 0.85)
+        Line(rectangle=(panel_x, panel_y, panel_w, panel_h), width=1.4)
+
+        self.draw_centered_canvas_text("STAR DODGER", self.x + w * 0.5,
+                                       self.y + h * 0.80, max(30, w * 0.075),
+                                       (0.88, 0.97, 1, 1))
+        self.draw_centered_canvas_text("DODGE THE METEORS. COLLECT THE STARS.",
+                                       self.x + w * 0.5, self.y + h * 0.70,
+                                       max(10, w * 0.025), (0.48, 0.86, 1, 1))
+        status = f"BEST SCORE  {self.best_score}" if self.best_score else "READY FOR YOUR NEXT RUN?"
+        self.draw_centered_canvas_text(status, self.x + w * 0.5,
+                                       self.y + h * 0.57, max(13, w * 0.031),
+                                       (0.85, 0.92, 1, 1))
+
+        buttons = (
+            ("PLAY", 0.49, (0.04, 0.55, 0.86, 1)),
+            ("SETTINGS", 0.37, (0.08, 0.22, 0.40, 1)),
+            ("HOW TO PLAY", 0.25, (0.08, 0.22, 0.40, 1)),
+        )
+        for label, cy, fill in buttons:
+            bx, by = self.x + w * 0.18, self.y + h * (cy - 0.042)
+            bw, bh = w * 0.64, h * 0.084
+            Color(*fill)
+            Rectangle(pos=(bx, by), size=(bw, bh))
+            Color(0.22, 0.82, 1, 0.95)
+            Line(rectangle=(bx, by, bw, bh), width=1.25)
+            self.draw_centered_canvas_text(label, self.x + w * 0.5,
+                                           self.y + h * cy, max(16, w * 0.039),
+                                           (0.94, 0.98, 1, 1))
+        self.draw_centered_canvas_text("TOUCH PLAY TO START",
+                                       self.x + w * 0.5, self.y + h * 0.155,
+                                       max(10, w * 0.024), (0.42, 0.72, 0.9, 1))
 
     def redraw(self, *args):
         self.canvas.clear()
@@ -993,6 +1048,9 @@ class StarDodger(FloatLayout):
                 # No on-screen steering arrows: the whole playfield is touch-and-drag.
             Color(0.12, 0.68, 1, 0.35)
             Line(points=[self.x, self.y + 1, self.x + w, self.y + 1], width=1)
+
+            if self.screen == "home":
+                self.draw_home_menu(w, h)
 
 
 class StarDodgerApp(App):
