@@ -457,6 +457,41 @@ class StarDodger(FloatLayout):
                 uniform(0.2, 0.6), uniform(1.5, 4.5)
             ])
 
+    def circle_hits_ship(self, cx, cy, radius):
+        """Pixel-space circle vs. the visible ship silhouette; glow is ignored."""
+        w, h = self.width, self.height
+        px = self.x + self.player_x * w
+        py = self.y + h * 0.14
+        # Outer contour of the rendered wings and armored fuselage.
+        polygon = [
+            (px, py + 35), (px - 28, py - 19), (px - 18, py - 23),
+            (px - 34, py - 15), (px - 18, py - 5), (px - 8, py - 17),
+            (px, py - 17), (px + 8, py - 17), (px + 18, py - 5),
+            (px + 34, py - 15), (px + 18, py - 23), (px + 28, py - 19)
+        ]
+        inside = False
+        j = len(polygon) - 1
+        for i, (ax, ay) in enumerate(polygon):
+            bx, by = polygon[j]
+            if ((ay > cy) != (by > cy)):
+                cross_x = (bx - ax) * (cy - ay) / ((by - ay) or 1e-12) + ax
+                if cx < cross_x:
+                    inside = not inside
+            j = i
+        if inside:
+            return True
+        r2 = radius * radius
+        for i, (ax, ay) in enumerate(polygon):
+            bx, by = polygon[(i + 1) % len(polygon)]
+            dx, dy = bx - ax, by - ay
+            length2 = dx * dx + dy * dy
+            t = 0.0 if length2 == 0 else max(0.0, min(1.0,
+                ((cx - ax) * dx + (cy - ay) * dy) / length2))
+            qx, qy = ax + t * dx, ay + t * dy
+            if (cx - qx) ** 2 + (cy - qy) ** 2 <= r2:
+                return True
+        return False
+
     def update(self, dt):
         if not self.game_started or self.screen != "game":
             return False
@@ -550,7 +585,9 @@ class StarDodger(FloatLayout):
             shot[1] += shot[3] * dt
             if shot[1] < -0.08 or shot[0] < -0.08 or shot[0] > 1.08:
                 self.boss_shots.remove(shot)
-            elif abs(shot[1] - 0.14) < 0.045 and abs(shot[0] - self.player_x) < 0.038:
+            elif self.circle_hits_ship(
+                    self.x + shot[0] * self.width,
+                    self.y + shot[1] * self.height, 8):
                 self.boss_shots.remove(shot)
                 if self.shield_time > 0:
                     self.shield_time = 0.0
@@ -565,8 +602,9 @@ class StarDodger(FloatLayout):
             meteor[1] -= dt * meteor[3]
             if meteor[1] < -0.12:
                 self.asteroids.remove(meteor)
-            elif (abs(meteor[1] - 0.14) < 0.065 + 0.012 * meteor[2]
-                  and abs(meteor[0] - self.player_x) < 0.035 + 0.012 * meteor[2]):
+            elif self.circle_hits_ship(
+                    self.x + meteor[0] * self.width,
+                    self.y + meteor[1] * self.height, 15 * meteor[2]):
                 self.asteroids.remove(meteor)
                 if self.shield_time > 0:
                     self.shield_time = 0.0
@@ -582,7 +620,9 @@ class StarDodger(FloatLayout):
             star[2] = (star[2] + dt * 5.5) % math.tau
             if star[1] < -0.08:
                 self.stars.remove(star)
-            elif star[1] < 0.17 and abs(star[0] - self.player_x) < 0.075:
+            elif self.circle_hits_ship(
+                    self.x + star[0] * self.width,
+                    self.y + star[1] * self.height, 11):
                 self.stars.remove(star)
                 self.score += 15
                 self.explode(star[0], star[1], 9)
@@ -591,7 +631,9 @@ class StarDodger(FloatLayout):
             pickup[1] -= dt * 0.24
             if pickup[1] < -0.08:
                 self.powerups.remove(pickup)
-            elif pickup[1] < 0.19 and abs(pickup[0] - self.player_x) < 0.085:
+            elif self.circle_hits_ship(
+                    self.x + pickup[0] * self.width,
+                    self.y + pickup[1] * self.height, 12):
                 self.powerups.remove(pickup)
                 if pickup[2] == 0:
                     self.shield_time = 7.0
