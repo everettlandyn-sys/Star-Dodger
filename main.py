@@ -342,46 +342,45 @@ class StarDodger(FloatLayout):
         self.redraw()
 
     def draw_game_over(self, w, h):
-        panel_w, panel_h = w * 0.84, h * 0.62
+        panel_w, panel_h = w * 0.86, h * 0.64
         panel_x = self.x + (w - panel_w) * 0.5
-        panel_y = self.y + h * 0.18
-        # Soft red/cyan glow around a rounded dark-glass results card.
-        Color(1.0, 0.18, 0.30, 0.13)
-        RoundedRectangle(pos=(panel_x - 5, panel_y - 5),
-                         size=(panel_w + 10, panel_h + 10), radius=[30])
-        Color(0.008, 0.018, 0.055, 0.96)
+        panel_y = self.y + h * 0.17
+        Color(1.0, 0.25, 0.52, 0.20)
+        RoundedRectangle(pos=(panel_x - 7, panel_y - 7),
+                         size=(panel_w + 14, panel_h + 14), radius=[38])
+        Color(0.018, 0.025, 0.09, 0.97)
         RoundedRectangle(pos=(panel_x, panel_y),
-                         size=(panel_w, panel_h), radius=[27])
-        Color(1.0, 0.30, 0.42, 0.95)
-        Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 27), width=1.8)
-        self.draw_centered_canvas_text("RUN OVER", self.x + w * 0.5,
-                                       self.y + h * 0.79, max(29, w * 0.073),
-                                       (1.0, 0.48, 0.58, 1))
-        self.draw_centered_canvas_text("YOUR SHIP HAS LEFT THIS SECTOR",
+                         size=(panel_w, panel_h), radius=[34])
+        Color(1.0, 0.42, 0.64, 0.95)
+        Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 34), width=2)
+        self.draw_centered_canvas_text("OH NO, SPACE CADET!", self.x + w * 0.5,
+                                       self.y + h * 0.79, max(25, w * 0.064),
+                                       (1.0, 0.60, 0.72, 1))
+        self.draw_centered_canvas_text("THAT WAS ONE WILD RIDE!",
                                        self.x + w * 0.5, self.y + h * 0.715,
-                                       max(10, w * 0.025), (0.55, 0.78, 0.92, 1))
-
-        # Score gets the strongest visual emphasis.
+                                       max(11, w * 0.027), (0.60, 0.86, 1, 1))
         score_y = self.y + h * 0.575
-        Color(0.10, 0.62, 1, 0.15)
-        RoundedRectangle(pos=(self.x + w * 0.22, score_y - h * 0.075),
-                         size=(w * 0.56, h * 0.15), radius=[22])
-        self.draw_centered_canvas_text("FINAL SCORE", self.x + w * 0.5,
-                                       score_y + h * 0.035, max(12, w * 0.03),
-                                       (0.55, 0.86, 1, 1))
+        Color(0.10, 0.62, 1, 0.20)
+        RoundedRectangle(pos=(self.x + w * 0.20, score_y - h * 0.080),
+                         size=(w * 0.60, h * 0.16), radius=[30])
+        Color(0.45, 0.88, 1, 0.8)
+        Line(rounded_rectangle=(self.x + w * 0.20, score_y - h * 0.080,
+                                w * 0.60, h * 0.16, 30), width=1.2)
+        self.draw_centered_canvas_text("YOUR SCORE", self.x + w * 0.5,
+                                       score_y + h * 0.037, max(12, w * 0.031),
+                                       (0.66, 0.90, 1, 1))
         self.draw_centered_canvas_text(str(self.score), self.x + w * 0.5,
-                                       score_y - h * 0.025, max(32, w * 0.095),
-                                       (0.94, 0.99, 1, 1))
-
+                                       score_y - h * 0.025, max(34, w * 0.10),
+                                       (1, 1, 1, 1))
         stat_y = self.y + h * 0.405
-        self.draw_centered_canvas_text(f"LEVEL REACHED   {self.level}",
+        self.draw_centered_canvas_text(f"LEVEL {self.level}  •  {self.lives} LIVES LEFT",
                                        self.x + w * 0.5, stat_y,
-                                       max(14, w * 0.035), (0.65, 0.90, 1, 1))
-        best_label = "NEW BEST SCORE!" if self.is_new_best else f"BEST SCORE   {self.best_score}"
-        best_color = (1.0, 0.82, 0.32, 1) if self.is_new_best else (0.45, 1.0, 0.78, 1)
+                                       max(13, w * 0.033), (0.72, 0.92, 1, 1))
+        best_label = "NEW PERSONAL BEST!  ✨" if self.is_new_best else f"BEST SCORE  {self.best_score}"
+        best_color = (1.0, 0.84, 0.40, 1) if self.is_new_best else (0.50, 1.0, 0.82, 1)
         self.draw_centered_canvas_text(best_label, self.x + w * 0.5,
                                        self.y + h * 0.335,
-                                       max(13, w * 0.032), best_color)
+                                       max(13, w * 0.033), best_color)
 
     def shift_player(self, amount):
         if self.screen == "game":
@@ -650,90 +649,122 @@ class StarDodger(FloatLayout):
                   size=texture.size)
 
     def draw_home_menu(self, w, h):
-        # A canvas-native menu is always drawn above the space background.
-        panel_w, panel_h = w * 0.82, h * 0.66
-        panel_x, panel_y = self.x + (w - panel_w) / 2, self.y + h * 0.12
-        Color(0.005, 0.018, 0.055, 0.82)
-        Rectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h))
-        Color(0.12, 0.72, 1, 0.85)
-        Line(rectangle=(panel_x, panel_y, panel_w, panel_h), width=1.4)
+        # Playful rounded-glass home card with colorful pill buttons.
+        panel_w, panel_h = w * 0.84, h * 0.68
+        panel_x, panel_y = self.x + (w - panel_w) / 2, self.y + h * 0.11
+        Color(0.12, 0.55, 1, 0.18)
+        RoundedRectangle(pos=(panel_x - 7, panel_y - 7),
+                         size=(panel_w + 14, panel_h + 14), radius=[38])
+        Color(0.018, 0.035, 0.105, 0.88)
+        RoundedRectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h), radius=[34])
+        Color(0.30, 0.82, 1, 0.95)
+        Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 34), width=2)
+        Color(0.75, 0.94, 1, 0.18)
+        Line(points=[panel_x + 34, panel_y + panel_h - 12,
+                     panel_x + panel_w - 34, panel_y + panel_h - 12], width=2)
 
         self.draw_centered_canvas_text("STAR DODGER", self.x + w * 0.5,
-                                       self.y + h * 0.80, max(30, w * 0.075),
-                                       (0.88, 0.97, 1, 1))
-        self.draw_centered_canvas_text("DODGE THE METEORS. COLLECT THE STARS.",
+                                       self.y + h * 0.80, max(32, w * 0.078),
+                                       (1.0, 0.94, 0.55, 1))
+        self.draw_centered_canvas_text("DODGE • COLLECT • EXPLORE",
                                        self.x + w * 0.5, self.y + h * 0.70,
-                                       max(10, w * 0.025), (0.48, 0.86, 1, 1))
+                                       max(11, w * 0.028), (0.54, 0.91, 1, 1))
         status = f"BEST SCORE  {self.best_score}" if self.best_score else "READY FOR YOUR NEXT RUN?"
+        bx, by, bw, bh = self.x + w * 0.25, self.y + h * 0.535, w * 0.50, h * 0.065
+        Color(0.20, 0.72, 1, 0.18)
+        RoundedRectangle(pos=(bx, by), size=(bw, bh), radius=[22])
         self.draw_centered_canvas_text(status, self.x + w * 0.5,
-                                       self.y + h * 0.57, max(13, w * 0.031),
-                                       (0.85, 0.92, 1, 1))
+                                       by + bh * 0.5, max(12, w * 0.029),
+                                       (0.88, 0.96, 1, 1))
 
         buttons = (
-            ("PLAY", 0.49, (0.04, 0.55, 0.86, 1)),
-            ("SETTINGS", 0.37, (0.08, 0.22, 0.40, 1)),
-            ("HOW TO PLAY", 0.25, (0.08, 0.22, 0.40, 1)),
+            ("LET'S PLAY!  ✦", 0.49, (0.10, 0.66, 0.98, 1), (0.55, 0.90, 1, 1)),
+            ("SETTINGS  ⚙", 0.37, (0.36, 0.27, 0.82, 1), (0.76, 0.67, 1, 1)),
+            ("HOW TO PLAY  ★", 0.25, (0.08, 0.60, 0.54, 1), (0.48, 1, 0.82, 1)),
         )
-        for label, cy, fill in buttons:
-            bx, by = self.x + w * 0.18, self.y + h * (cy - 0.042)
-            bw, bh = w * 0.64, h * 0.084
+        for label, cy, fill, rim in buttons:
+            bx, by = self.x + w * 0.18, self.y + h * (cy - 0.043)
+            bw, bh = w * 0.64, h * 0.086
+            Color(0, 0, 0, 0.24)
+            RoundedRectangle(pos=(bx, by - 4), size=(bw, bh), radius=[bh * 0.5])
             Color(*fill)
-            Rectangle(pos=(bx, by), size=(bw, bh))
-            Color(0.22, 0.82, 1, 0.95)
-            Line(rectangle=(bx, by, bw, bh), width=1.25)
+            RoundedRectangle(pos=(bx, by), size=(bw, bh), radius=[bh * 0.5])
+            Color(*rim)
+            Line(rounded_rectangle=(bx, by, bw, bh, bh * 0.5), width=1.7)
+            Color(1, 1, 1, 0.20)
+            Line(points=[bx + 24, by + bh - 9, bx + bw - 24, by + bh - 9], width=1.5)
             self.draw_centered_canvas_text(label, self.x + w * 0.5,
-                                           self.y + h * cy, max(16, w * 0.039),
-                                           (0.94, 0.98, 1, 1))
-        self.draw_centered_canvas_text("TOUCH PLAY TO START",
-                                       self.x + w * 0.5, self.y + h * 0.155,
-                                       max(10, w * 0.024), (0.42, 0.72, 0.9, 1))
+                                           self.y + h * cy, max(16, w * 0.040),
+                                           (1, 1, 1, 1))
+        self.draw_centered_canvas_text("TAP A BUTTON TO BEGIN",
+                                       self.x + w * 0.5, self.y + h * 0.145,
+                                       max(10, w * 0.024), (0.60, 0.83, 1, 1))
 
     def draw_menu_panel(self, w, h, heading, subtitle):
-        panel_w, panel_h = w * 0.82, h * 0.72
+        panel_w, panel_h = w * 0.84, h * 0.72
         panel_x, panel_y = self.x + (w - panel_w) / 2, self.y + h * 0.10
-        Color(0.005, 0.018, 0.055, 0.88)
-        Rectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h))
-        Color(0.12, 0.72, 1, 0.9)
-        Line(rectangle=(panel_x, panel_y, panel_w, panel_h), width=1.4)
+        Color(0.18, 0.55, 1, 0.18)
+        RoundedRectangle(pos=(panel_x - 6, panel_y - 6),
+                         size=(panel_w + 12, panel_h + 12), radius=[36])
+        Color(0.018, 0.035, 0.105, 0.90)
+        RoundedRectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h), radius=[32])
+        Color(0.34, 0.80, 1, 0.95)
+        Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 32), width=1.8)
         self.draw_centered_canvas_text(heading, self.x + w * 0.5,
-                                       self.y + h * 0.80, max(27, w * 0.067),
-                                       (0.88, 0.97, 1, 1))
+                                       self.y + h * 0.80, max(29, w * 0.070),
+                                       (1.0, 0.94, 0.58, 1))
         self.draw_centered_canvas_text(subtitle, self.x + w * 0.5,
-                                       self.y + h * 0.70, max(11, w * 0.027),
-                                       (0.48, 0.86, 1, 1))
+                                       self.y + h * 0.70, max(11, w * 0.028),
+                                       (0.55, 0.90, 1, 1))
 
     def draw_settings_menu(self, w, h):
-        self.draw_menu_panel(w, h, "SETTINGS", "CHOOSE YOUR DIFFICULTY")
+        self.draw_menu_panel(w, h, "SETTINGS", "PICK YOUR ADVENTURE STYLE")
+        colors = {
+            "EASY": (0.08, 0.62, 0.48, 1),
+            "NORMAL": (0.10, 0.52, 0.90, 1),
+            "HARD": (0.72, 0.25, 0.55, 1)
+        }
         for label, cy in (("EASY", 0.46), ("NORMAL", 0.36), ("HARD", 0.26)):
             selected = label.title() == self.difficulty
-            bx, by, bw, bh = self.x + w * 0.18, self.y + h * (cy - 0.042), w * 0.64, h * 0.084
-            Color(0.04, 0.55, 0.82, 1) if selected else Color(0.08, 0.22, 0.40, 1)
-            Rectangle(pos=(bx, by), size=(bw, bh))
-            Color(0.22, 0.82, 1, 0.95)
-            Line(rectangle=(bx, by, bw, bh), width=1.25)
-            self.draw_centered_canvas_text(label, self.x + w * 0.5,
-                                           self.y + h * cy, max(16, w * 0.039),
-                                           (0.94, 0.98, 1, 1))
+            bx, by, bw, bh = self.x + w * 0.18, self.y + h * (cy - 0.043), w * 0.64, h * 0.086
+            Color(0, 0, 0, 0.22)
+            RoundedRectangle(pos=(bx, by - 3), size=(bw, bh), radius=[bh * 0.5])
+            if selected:
+                Color(*colors[label])
+            else:
+                Color(0.07, 0.16, 0.32, 0.98)
+            RoundedRectangle(pos=(bx, by), size=(bw, bh), radius=[bh * 0.5])
+            Color(0.48, 0.88, 1, 0.9)
+            Line(rounded_rectangle=(bx, by, bw, bh, bh * 0.5), width=1.5)
+            self.draw_centered_canvas_text(("✓  " if selected else "✦  ") + label,
+                                           self.x + w * 0.5, self.y + h * cy,
+                                           max(16, w * 0.040), (1, 1, 1, 1))
         self.draw_centered_canvas_text("←  BACK TO MENU", self.x + w * 0.5,
-                                       self.y + h * 0.15, max(13, w * 0.031),
-                                       (0.55, 0.88, 1, 1))
+                                       self.y + h * 0.15, max(14, w * 0.033),
+                                       (0.70, 0.91, 1, 1))
 
     def draw_help_menu(self, w, h):
-        self.draw_menu_panel(w, h, "HOW TO PLAY", "SURVIVE THE SECTORS")
+        self.draw_menu_panel(w, h, "HOW TO PLAY", "FIVE LITTLE TIPS FOR YOUR RUN")
         instructions = (
-            "DRAG LEFT OR RIGHT TO STEER",
-            "DODGE METEORS AND ENEMY FIRE",
-            "COLLECT STARS AND POWER-UPS",
-            "BOSSES APPEAR EVERY 5 LEVELS",
-            "YOU HAVE 3 LIVES",
+            "☝  DRAG TO STEER YOUR SHIP",
+            "☄  DODGE METEORS & ENEMY FIRE",
+            "★  COLLECT STARS & POWER-UPS",
+            "👾  BOSS BATTLES EVERY 5 LEVELS",
+            "♥  YOU HAVE 3 LIVES",
         )
         for index, line in enumerate(instructions):
+            cy = 0.565 - index * 0.078
+            bx, by, bw, bh = self.x + w * 0.13, self.y + h * (cy - 0.027), w * 0.74, h * 0.054
+            Color(0.12, 0.54, 1, 0.16)
+            RoundedRectangle(pos=(bx, by), size=(bw, bh), radius=[bh * 0.5])
+            Color(0.34, 0.78, 1, 0.52)
+            Line(rounded_rectangle=(bx, by, bw, bh, bh * 0.5), width=1)
             self.draw_centered_canvas_text(line, self.x + w * 0.5,
-                                           self.y + h * (0.55 - index * 0.075),
-                                           max(12, w * 0.030), (0.86, 0.94, 1, 1))
+                                           self.y + h * cy, max(11, w * 0.028),
+                                           (0.91, 0.97, 1, 1))
         self.draw_centered_canvas_text("←  BACK TO MENU", self.x + w * 0.5,
-                                       self.y + h * 0.15, max(13, w * 0.031),
-                                       (0.55, 0.88, 1, 1))
+                                       self.y + h * 0.15, max(14, w * 0.033),
+                                       (0.70, 0.91, 1, 1))
 
     def redraw(self, *args):
         self.canvas.clear()
