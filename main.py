@@ -174,7 +174,10 @@ class StarDodger(FloatLayout):
         self.title.markup = True
         self.title.font_size = "38sp"
         self.subtitle.opacity = 1
-        self.info.text = f"BEST SCORE  {self.best_score}" if self.best_score else ""
+        self.info.pos_hint = {"center_x": 0.5, "center_y": 0.56}
+        self.info.height = 58
+        self.info.font_size = "17sp"
+        self.info.text = f"BEST SCORE  {self.best_score}" if self.best_score else "READY FOR YOUR NEXT RUN?"
         self.hint.text = "TAP PLAY TO START"
         self.set_visible(self.title, True)
         self.set_visible(self.subtitle, True)
@@ -353,7 +356,15 @@ class StarDodger(FloatLayout):
         self.title.text = "[b]GAME[/b] [color=ff657a]OVER[/color]"
         self.title.markup = True
         self.subtitle.text = "RUN COMPLETE"
-        self.info.text = f"SCORE  {self.score}     BEST  {self.best_score}"
+        self.info.pos_hint = {"center_x": 0.5, "center_y": 0.55}
+        self.info.height = 112
+        self.info.font_size = "20sp"
+        self.info.text = (
+            f"[b]FINAL SCORE  {self.score}[/b]\n"
+            f"LEVEL REACHED  {self.level}\n"
+            f"BEST SCORE  {self.best_score}"
+        )
+        self.info.markup = True
         self.hint.text = "TRY AGAIN AND REACH THE NEXT SECTOR"
         for widget in (self.title, self.subtitle, self.info, self.hint):
             self.set_visible(widget, True)
