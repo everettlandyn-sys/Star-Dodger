@@ -399,9 +399,12 @@ class StarDodger(FloatLayout):
 
     def move_player_to(self, x, y):
         if self.width > 0 and self.height > 0:
-            # Free-roam touch steering: both axes follow the finger smoothly.
-            self.player_target_x = max(0.055, min(0.945, (x - self.x) / self.width))
-            self.player_target_y = max(0.10, min(0.90, (y - self.y) / self.height))
+            # Direct touch steering: keep the ship centered under the finger
+            # with no easing lag, while clamping it inside the playfield.
+            nx = max(0.055, min(0.945, (x - self.x) / self.width))
+            ny = max(0.10, min(0.90, (y - self.y) / self.height))
+            self.player_target_x = self.player_x = nx
+            self.player_target_y = self.player_y = ny
             self.redraw()
 
     def on_touch_down(self, touch):
@@ -511,11 +514,9 @@ class StarDodger(FloatLayout):
         self.score_time += dt
         self.background_drift = (self.background_drift + dt * 0.018) % 1.0
         self.transition_time = max(0.0, self.transition_time - dt)
-        # Smooth, frame-rate-independent movement follows the player's finger.
-        slide_rate = 13.0 if self.speed_boost_time > 0 else 8.0
-        slide_factor = 1.0 - math.exp(-dt * slide_rate)
-        self.player_x += (self.player_target_x - self.player_x) * slide_factor
-        self.player_y += (self.player_target_y - self.player_y) * slide_factor
+        # Position is updated directly by touch events for zero-easing input.
+        self.player_x = self.player_target_x
+        self.player_y = self.player_target_y
         self.shower_time = max(0.0, self.shower_time - dt)
         self.shield_time = max(0.0, self.shield_time - dt)
         self.speed_boost_time = max(0.0, self.speed_boost_time - dt)
