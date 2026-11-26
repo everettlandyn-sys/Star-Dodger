@@ -104,9 +104,10 @@ class StarDodger(FloatLayout):
         for widget in (
             self.title, self.subtitle, self.info, self.hint,
             self.hud_level, self.hud_lives, self.hud_score,
-            self.play_button, self.settings_button, self.retry_button,
-            self.home_button, self.difficulty_label, *self.difficulty_buttons,
-            self.back_button,
+            self.play_button, self.settings_button, self.help_button,
+            self.help_text, self.help_back_button,
+            self.retry_button, self.home_button, self.difficulty_label,
+            *self.difficulty_buttons, self.back_button,
             self.pause_button, self.resume_button, self.pause_home_button
         ):
             self.add_widget(widget)
@@ -384,9 +385,8 @@ class StarDodger(FloatLayout):
             self.move_player_to(touch.x)
             touch.grab(self)
             return True
-        if self.screen == "home":
-            self.start_game()
-            return True
+        # The home screen only starts when the Play button is pressed.
+        # Taps elsewhere must not skip the main menu.
         return False
 
     def on_touch_move(self, touch):
