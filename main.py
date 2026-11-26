@@ -4,7 +4,7 @@ from random import randint, uniform
 from kivy.app import App
 from kivy.core.text import Label as CoreLabel
 from kivy.clock import Clock
-from kivy.graphics import Color, Ellipse, Line, Rectangle, Triangle, PushMatrix, PopMatrix, Translate
+from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle, Triangle, PushMatrix, PopMatrix, Translate
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
@@ -1145,55 +1145,65 @@ class StarDodger(FloatLayout):
                     Color(0.55, 0.96, 1, 0.65)
                     Line(circle=(px, py, 42), width=1.0)
 
-            # Neon angular HUD: three separate panels, glowing edges and ship-shaped lives.
+            # Larger bubble-style HUD: rounded glass capsules with soft neon glow.
             if self.screen == "game":
-                panel_h = max(56, h * 0.065)
-                panel_y = self.y + h * 0.865
-                panel_w = w * 0.29
-                panel_xs = (self.x + w * 0.025, self.x + w * 0.355, self.x + w * 0.685)
-                font = max(15, min(22, w * 0.034))
+                panel_h = max(72, h * 0.086)
+                panel_y = self.y + h * 0.842
+                panel_w = w * 0.30
+                panel_xs = (self.x + w * 0.025, self.x + w * 0.35, self.x + w * 0.675)
+                font = max(18, min(26, w * 0.041))
                 for panel_x in panel_xs:
-                    # Soft outer glow, dark glass fill, and clipped sci-fi corners.
-                    Color(0.02, 0.38, 1, 0.16)
-                    Line(points=[panel_x-2, panel_y+5, panel_x-2, panel_y+panel_h-5,
-                                 panel_x+10, panel_y+panel_h+2, panel_x+panel_w-10, panel_y+panel_h+2,
-                                 panel_x+panel_w+2, panel_y+panel_h-5, panel_x+panel_w+2, panel_y+5],
-                         close=True, width=3.2)
-                    Color(0.008, 0.025, 0.09, 0.94)
-                    Rectangle(pos=(panel_x, panel_y), size=(panel_w, panel_h))
-                    Color(0.10, 0.58, 1, 0.98)
-                    Line(points=[panel_x, panel_y+7, panel_x, panel_y+panel_h-7,
-                                 panel_x+10, panel_y+panel_h, panel_x+panel_w-10, panel_y+panel_h,
-                                 panel_x+panel_w, panel_y+panel_h-7, panel_x+panel_w, panel_y+7,
-                                 panel_x+panel_w-10, panel_y, panel_x+10, panel_y],
-                         close=True, width=1.35)
+                    # Outer glow and deep translucent rounded glass.
+                    Color(0.02, 0.48, 1, 0.18)
+                    RoundedRectangle(pos=(panel_x - 3, panel_y - 3),
+                                     size=(panel_w + 6, panel_h + 6), radius=[24])
+                    Color(0.012, 0.035, 0.105, 0.94)
+                    RoundedRectangle(pos=(panel_x, panel_y),
+                                     size=(panel_w, panel_h), radius=[21])
+                    Color(0.12, 0.68, 1, 0.92)
+                    Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 21),
+                         width=1.55)
+                    # A subtle glossy highlight across the top of each bubble.
+                    Color(0.48, 0.88, 1, 0.16)
+                    Line(points=[panel_x + 20, panel_y + panel_h - 8,
+                                 panel_x + panel_w - 20, panel_y + panel_h - 8],
+                         width=1.3)
 
-                # Extra-bright level readout, deliberately larger and centered in its own panel.
+                # Level bubble: bold label and a small glowing indicator.
+                level_cx = panel_xs[0] + panel_w * 0.5
+                Color(0.18, 0.78, 1, 0.95)
+                Ellipse(pos=(panel_xs[0] + 13, panel_y + panel_h * 0.43),
+                        size=(9, 9))
                 self.draw_canvas_text(f"LEVEL {self.level}",
-                                      panel_xs[0] + 9, panel_y + panel_h * 0.29,
-                                      font + 2, (0.78, 0.97, 1, 1))
+                                      panel_xs[0] + 29, panel_y + panel_h * 0.28,
+                                      font, (0.86, 0.98, 1, 1))
 
-                # Three tiny cyan ships communicate remaining lives at a glance.
+                # Three larger ship icons make remaining lives easy to read.
                 life_cx = panel_xs[1] + panel_w * 0.5
-                life_gap = min(25, panel_w * 0.23)
+                life_gap = min(31, panel_w * 0.25)
                 ship_y = panel_y + panel_h * 0.53
                 for life_index in range(3):
                     sx = life_cx + (life_index - 1) * life_gap
                     if life_index < self.lives:
-                        Color(0.02, 0.65, 1, 0.22)
-                        Ellipse(pos=(sx-10, ship_y-11), size=(20, 22))
-                        Color(0.22, 0.88, 1, 1)
-                        Triangle(points=[sx, ship_y+10, sx-7, ship_y-7, sx+7, ship_y-7])
-                        Color(0.9, 0.99, 1, 1)
-                        Line(points=[sx, ship_y+5, sx, ship_y-3], width=1.1)
+                        Color(0.02, 0.72, 1, 0.24)
+                        Ellipse(pos=(sx - 14, ship_y - 15), size=(28, 30))
+                        Color(0.28, 0.91, 1, 1)
+                        Triangle(points=[sx, ship_y + 14, sx - 10, ship_y - 10,
+                                         sx + 10, ship_y - 10])
+                        Color(0.94, 1, 1, 1)
+                        Line(points=[sx, ship_y + 8, sx, ship_y - 5], width=1.5)
                     else:
-                        Color(0.25, 0.38, 0.55, 0.5)
-                        Line(points=[sx, ship_y+8, sx-7, ship_y-7, sx+7, ship_y-7],
-                             close=True, width=1)
+                        Color(0.30, 0.43, 0.60, 0.55)
+                        Line(points=[sx, ship_y + 12, sx - 10, ship_y - 10,
+                                     sx + 10, ship_y - 10], close=True, width=1.3)
 
+                # Score bubble uses a mint accent to separate it from the other stats.
+                Color(0.22, 1, 0.78, 0.95)
+                Ellipse(pos=(panel_xs[2] + 13, panel_y + panel_h * 0.43),
+                        size=(9, 9))
                 self.draw_canvas_text(f"SCORE {self.score}",
-                                      panel_xs[2] + 10, panel_y + panel_h * 0.30,
-                                      font, (0.56, 1, 0.91, 1))
+                                      panel_xs[2] + 29, panel_y + panel_h * 0.28,
+                                      font, (0.70, 1, 0.91, 1))
 
                 # No on-screen steering arrows: the whole playfield is touch-and-drag.
             Color(0.12, 0.68, 1, 0.35)
