@@ -1640,6 +1640,8 @@ class StarDodger(FloatLayout):
                 self.draw_help_menu(w, h)
             elif self.screen == "over":
                 self.draw_game_over(w, h)
+            elif self.screen == "paused":
+                self.draw_pause_panel(w, h)
 
 
 class StarDodgerApp(App):
