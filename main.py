@@ -813,10 +813,25 @@ class StarDodger(FloatLayout):
         Color(1, 1, 1, 1)
         Rectangle(texture=texture, pos=(x, y), size=texture.size)
 
-    def draw_centered_canvas_text(self, text, center_x, center_y, font_size, color):
-        label = CoreLabel(text=text, font_size=font_size, bold=True, color=color)
+    def draw_centered_canvas_text(self, text, center_x, center_y, font_size, color,
+                                   max_width=None, max_height=None):
+        # Shrink text to fit its card/button bounds on narrow phones.
+        fitted_size = float(font_size)
+        label = CoreLabel(text=text, font_size=fitted_size, bold=True, color=color)
         label.refresh()
+        while fitted_size > 8 and (
+                (max_width is not None and label.texture.width > max_width) or
+                (max_height is not None and label.texture.height > max_height)):
+            fitted_size -= 1
+            label = CoreLabel(text=text, font_size=fitted_size, bold=True, color=color)
+            label.refresh()
         texture = label.texture
+        # Subtle offset shadow keeps text readable over bright backgrounds.
+        Color(0.005, 0.012, 0.045, 0.72)
+        Rectangle(texture=texture,
+                  pos=(center_x - texture.width / 2 + 1.5,
+                       center_y - texture.height / 2 - 1.5),
+                  size=texture.size)
         Color(1, 1, 1, 1)
         Rectangle(texture=texture,
                   pos=(center_x - texture.width / 2, center_y - texture.height / 2),
@@ -849,7 +864,8 @@ class StarDodger(FloatLayout):
         RoundedRectangle(pos=(bx, by), size=(bw, bh), radius=[22])
         self.draw_centered_canvas_text(status, self.x + w * 0.5,
                                        by + bh * 0.5, max(12, w * 0.029),
-                                       (0.88, 0.96, 1, 1))
+                                       (0.88, 0.96, 1, 1),
+                                       max_width=bw * 0.90, max_height=bh * 0.72)
 
         buttons = (
             ("LET'S PLAY!  ✦", 0.49, (0.10, 0.66, 0.98, 1), (0.55, 0.90, 1, 1)),
@@ -869,7 +885,8 @@ class StarDodger(FloatLayout):
             Line(points=[bx + 24, by + bh - 9, bx + bw - 24, by + bh - 9], width=1.5)
             self.draw_centered_canvas_text(label, self.x + w * 0.5,
                                            self.y + h * cy, max(16, w * 0.040),
-                                           (1, 1, 1, 1))
+                                           (1, 1, 1, 1),
+                                           max_width=bw * 0.88, max_height=bh * 0.68)
         self.draw_centered_canvas_text("TAP A BUTTON TO BEGIN",
                                        self.x + w * 0.5, self.y + h * 0.145,
                                        max(10, w * 0.024), (0.60, 0.83, 1, 1))
@@ -886,10 +903,12 @@ class StarDodger(FloatLayout):
         Line(rounded_rectangle=(panel_x, panel_y, panel_w, panel_h, 32), width=1.8)
         self.draw_centered_canvas_text(heading, self.x + w * 0.5,
                                        self.y + h * 0.80, max(29, w * 0.070),
-                                       (1.0, 0.94, 0.58, 1))
+                                       (1.0, 0.94, 0.58, 1),
+                                       max_width=panel_w * 0.88, max_height=h * 0.075)
         self.draw_centered_canvas_text(subtitle, self.x + w * 0.5,
                                        self.y + h * 0.70, max(11, w * 0.028),
-                                       (0.55, 0.90, 1, 1))
+                                       (0.55, 0.90, 1, 1),
+                                       max_width=panel_w * 0.88, max_height=h * 0.045)
 
     def draw_settings_menu(self, w, h):
         self.draw_menu_panel(w, h, "SETTINGS", "PICK YOUR ADVENTURE STYLE")
@@ -912,7 +931,8 @@ class StarDodger(FloatLayout):
             Line(rounded_rectangle=(bx, by, bw, bh, bh * 0.5), width=1.5)
             self.draw_centered_canvas_text(("✓  " if selected else "✦  ") + label,
                                            self.x + w * 0.5, self.y + h * cy,
-                                           max(16, w * 0.040), (1, 1, 1, 1))
+                                           max(16, w * 0.040), (1, 1, 1, 1),
+                                           max_width=bw * 0.88, max_height=bh * 0.68)
         self.draw_centered_canvas_text("←  BACK TO MENU", self.x + w * 0.5,
                                        self.y + h * 0.15, max(14, w * 0.033),
                                        (0.70, 0.91, 1, 1))
@@ -935,7 +955,8 @@ class StarDodger(FloatLayout):
             Line(rounded_rectangle=(bx, by, bw, bh, bh * 0.5), width=1)
             self.draw_centered_canvas_text(line, self.x + w * 0.5,
                                            self.y + h * cy, max(11, w * 0.028),
-                                           (0.91, 0.97, 1, 1))
+                                           (0.91, 0.97, 1, 1),
+                                           max_width=bw * 0.90, max_height=bh * 0.68)
         self.draw_centered_canvas_text("←  BACK TO MENU", self.x + w * 0.5,
                                        self.y + h * 0.15, max(14, w * 0.033),
                                        (0.70, 0.91, 1, 1))
