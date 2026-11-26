@@ -701,6 +701,17 @@ class StarDodger(FloatLayout):
 
         # Boss projectiles now need to overlap the ship's smaller collision zone.
         for shot in self.boss_shots[:]:
+            # Keep a short fading position history so each plasma bolt leaves
+            # a curved, motion-following energy trail instead of a static line.
+            if len(shot) < 5:
+                shot.append([])
+            trail = shot[4]
+            for point in trail:
+                point[2] -= dt * 2.8
+            trail[:] = [point for point in trail if point[2] > 0]
+            trail.append([shot[0], shot[1], 1.0])
+            if len(trail) > 10:
+                trail.pop(0)
             shot[0] += shot[2] * dt
             shot[1] += shot[3] * dt
             if shot[1] < -0.08 or shot[0] < -0.08 or shot[0] > 1.08:
@@ -1234,28 +1245,43 @@ class StarDodger(FloatLayout):
                     Color(1.0, 0.88, 0.72, 1)
                     Ellipse(pos=(x - 2.5, y - 2.5), size=(5, 5))
 
-                for sx, sy, vx, vy in self.boss_shots:
+                for shot in self.boss_shots:
+                    sx, sy, vx, vy = shot[:4]
                     x, y = self.x + sx * w, self.y + sy * h
-                    # Directional plasma trail, drawn behind the moving shot.
-                    trail_x, trail_y = -vx, -vy
-                    trail_len = min(w, h) * 0.075
-                    tail_x = x + trail_x * trail_len
-                    tail_y = y + trail_y * trail_len
                     shot_tint = (1.0, 0.18, 0.34, 1) if vx < -0.04 else (
                         (1.0, 0.48, 0.12, 1) if vx > 0.04 else (0.42, 0.72, 1.0, 1))
-                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.16)
-                    Line(points=[tail_x, tail_y, x, y], width=12)
-                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.42)
-                    Line(points=[tail_x, tail_y, x, y], width=5)
-                    # Layered halo, hot plasma shell, and white-hot center.
-                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.18)
-                    Ellipse(pos=(x - 15, y - 15), size=(30, 30))
-                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.95)
-                    Ellipse(pos=(x - 8, y - 8), size=(16, 16))
-                    Color(1.0, 0.86, 0.82, 1)
-                    Ellipse(pos=(x - 4, y - 4), size=(8, 8))
-                    Color(1, 1, 1, 0.9)
-                    Ellipse(pos=(x - 1.8, y - 1.8), size=(3.6, 3.6))
+                    # Draw a fading, tapered plasma wake using the projectile's
+                    # actual recent positions. Older trail segments become softer.
+                    trail = shot[4] if len(shot) > 4 else []
+                    trail_points = [(self.x + p[0] * w, self.y + p[1] * h, p[2])
+                                    for p in trail]
+                    for index in range(1, len(trail_points)):
+                        ax, ay, age_alpha = trail_points[index - 1]
+                        bx, by, fresh_alpha = trail_points[index]
+                        alpha = min(age_alpha, fresh_alpha)
+                        width = 2.0 + 7.0 * alpha
+                        Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.10 + 0.30 * alpha)
+                        Line(points=[ax, ay, bx, by], width=width * 2.2)
+                        Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.20 + 0.58 * alpha)
+                        Line(points=[ax, ay, bx, by], width=width)
+                        Color(1.0, 0.84, 0.78, 0.20 + 0.35 * alpha)
+                        Line(points=[ax, ay, bx, by], width=max(1, width * 0.28))
+                    # Bright exhaust plume and layered plasma shell/core.
+                    direction_len = max(0.0001, math.hypot(vx, vy))
+                    back_x = -vx / direction_len
+                    back_y = -vy / direction_len
+                    plume_len = min(w, h) * 0.030
+                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.28)
+                    Ellipse(pos=(x + back_x * plume_len - 7,
+                                 y + back_y * plume_len - 7), size=(14, 14))
+                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.24)
+                    Ellipse(pos=(x - 17, y - 17), size=(34, 34))
+                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.98)
+                    Ellipse(pos=(x - 9, y - 9), size=(18, 18))
+                    Color(1.0, 0.66, 0.56, 1)
+                    Ellipse(pos=(x - 5, y - 5), size=(10, 10))
+                    Color(1, 1, 1, 1)
+                    Ellipse(pos=(x - 2.2, y - 2.2), size=(4.4, 4.4))
 
                 if self.boss is not None:
                     bx, by, hp, max_hp, phase, attack = self.boss[:6]
