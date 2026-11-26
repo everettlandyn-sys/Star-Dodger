@@ -43,6 +43,8 @@ class StarDodger(FloatLayout):
             for _ in range(150)
         ]
         self.background_drift = 0.0
+        self.transition_time = 0.0
+        self.transition_duration = 1.45
 
         self.title = self.make_label("[b]STAR[/b] [color=35d9ff]DODGER[/color]", 38, 0.77)
         self.title.markup = True
@@ -426,6 +428,7 @@ class StarDodger(FloatLayout):
         self.level_time += dt
         self.score_time += dt
         self.background_drift = (self.background_drift + dt * 0.018) % 1.0
+        self.transition_time = max(0.0, self.transition_time - dt)
         # Smooth, frame-rate-independent movement follows the player's finger.
         slide_rate = 13.0 if self.speed_boost_time > 0 else 8.0
         slide_factor = 1.0 - math.exp(-dt * slide_rate)
@@ -441,6 +444,7 @@ class StarDodger(FloatLayout):
         if self.level_time >= 20:
             self.level_time -= 20
             self.level += 1
+            self.transition_time = self.transition_duration
             self.score += 25
             self.shower_time = 4.5
             if self.level % 5 == 0 and self.boss is None:
@@ -704,7 +708,8 @@ class StarDodger(FloatLayout):
             ((0.035, 0.008, 0.075, 1), (0.16, 0.035, 0.30, 0.32), (0.28, 0.025, 0.24, 0.22), (0.82, 0.52, 1, 0.85)),
             ((0.008, 0.055, 0.035, 1), (0.025, 0.22, 0.12, 0.30), (0.08, 0.18, 0.045, 0.24), (0.48, 1, 0.65, 0.85)),
         ]
-        bg, glow_a, glow_b, star_tint = themes[(max(1, self.level) - 1) % len(themes)]
+        scene_level = max(1, self.level - 1) if self.transition_time > 0 else max(1, self.level)
+        bg, glow_a, glow_b, star_tint = themes[(scene_level - 1) % len(themes)]
         with self.canvas:
             Color(*bg)
             Rectangle(pos=self.pos, size=self.size)
@@ -713,7 +718,7 @@ class StarDodger(FloatLayout):
             Color(*glow_b)
             Ellipse(pos=(self.x + w * 0.32, self.y + h * 0.1), size=(w * 0.8, h * 0.42))
             # Layered nebula clouds: overlapping soft color fields make each sector feel deeper.
-            nebula_shift = (max(1, self.level) - 1) % 5
+            nebula_shift = (scene_level - 1) % 5
             nebula_x = self.x + w * (0.12 + nebula_shift * 0.13)
             Color(star_tint[0], star_tint[1], star_tint[2], 0.10)
             Ellipse(pos=(nebula_x - w * 0.22, self.y + h * 0.43), size=(w * 0.62, h * 0.20))
@@ -741,15 +746,15 @@ class StarDodger(FloatLayout):
                     Rectangle(pos=(px - 5, py - 1), size=(12, pixel + 2))
 
             # Large pixel-space planets with neon halos and ring details.
-            planet_x = self.x + w * (0.72 if self.level % 2 else 0.24)
-            planet_y = self.y + h * (0.79 if self.level % 3 else 0.67)
+            planet_x = self.x + w * (0.72 if scene_level % 2 else 0.24)
+            planet_y = self.y + h * (0.79 if scene_level % 3 else 0.67)
             planet_r = min(w, h) * 0.105
             planet_colors = [
                 (0.05, 0.78, 0.72, 1), (0.40, 0.20, 0.95, 1),
                 (0.95, 0.25, 0.72, 1), (0.12, 0.48, 1, 1),
                 (0.28, 0.82, 0.95, 1)
             ]
-            planet_color = planet_colors[(max(1, self.level) - 1) % len(planet_colors)]
+            planet_color = planet_colors[(scene_level - 1) % len(planet_colors)]
             Color(0.18, 0.10, 1, 0.18)
             Ellipse(pos=(planet_x - planet_r * 1.65, planet_y - planet_r * 1.65),
                     size=(planet_r * 3.3, planet_r * 3.3))
@@ -778,8 +783,8 @@ class StarDodger(FloatLayout):
                         size=(planet_r * crater_size * 2, planet_r * crater_size * 2))
 
             # A second, smaller moon and a distant ringed planet create a real multi-world scene.
-            moon_x = self.x + w * (0.18 if self.level % 2 else 0.82)
-            moon_y = self.y + h * (0.56 if self.level % 3 else 0.39)
+            moon_x = self.x + w * (0.18 if scene_level % 2 else 0.82)
+            moon_y = self.y + h * (0.56 if scene_level % 3 else 0.39)
             moon_r = min(w, h) * 0.037
             Color(0.55, 0.72, 1, 0.12)
             Ellipse(pos=(moon_x - moon_r * 1.5, moon_y - moon_r * 1.5), size=(moon_r * 3, moon_r * 3))
@@ -791,7 +796,7 @@ class StarDodger(FloatLayout):
                              moon_y + moon_r * crater_dy - moon_r * crater_scale),
                         size=(moon_r * crater_scale * 2, moon_r * crater_scale * 2))
 
-            far_x = self.x + w * (0.84 if self.level % 2 else 0.16)
+            far_x = self.x + w * (0.84 if scene_level % 2 else 0.16)
             far_y = self.y + h * 0.30
             far_r = min(w, h) * 0.020
             Color(0.35, 0.72, 1, 0.72)
@@ -799,6 +804,47 @@ class StarDodger(FloatLayout):
             Color(0.65, 0.90, 1, 0.45)
             Line(ellipse=(far_x - far_r * 1.9, far_y - far_r * 0.45,
                           far_r * 3.8, far_r * 0.9), width=1.3)
+
+            # Slide the incoming sector in from the right over the old world.
+            if self.screen == "game" and self.transition_time > 0:
+                progress = self.transition_time / self.transition_duration
+                eased = progress * progress * (3.0 - 2.0 * progress)
+                offset = w * eased
+                next_level = max(1, self.level)
+                next_bg, next_glow_a, next_glow_b, next_star = themes[(next_level - 1) % len(themes)]
+                incoming_x = self.x + w - offset
+                Color(*next_bg)
+                Rectangle(pos=(incoming_x, self.y), size=(w, h))
+                Color(*next_glow_a)
+                Ellipse(pos=(incoming_x + w * 0.06, self.y + h * 0.48), size=(w * 0.9, h * 0.48))
+                Color(*next_glow_b)
+                Ellipse(pos=(incoming_x + w * 0.32, self.y + h * 0.1), size=(w * 0.8, h * 0.42))
+                Color(next_star[0], next_star[1], next_star[2], 0.12)
+                Ellipse(pos=(incoming_x + w * 0.12, self.y + h * 0.43), size=(w * 0.62, h * 0.20))
+                # New sector stars and its signature planet travel in with the scene.
+                for index, (sx, sy, radius) in enumerate(self.background_stars):
+                    if index % 2 == 0:
+                        Color(*((0.16, 0.35, 1.0, 0.95), (0.55, 0.12, 1.0, 0.9),
+                                (0.05, 0.85, 1.0, 0.9), (0.92, 0.30, 1.0, 0.85),
+                                (0.25, 0.95, 0.75, 0.85))[index % 5])
+                        star_x = incoming_x + sx * w
+                        star_y = self.y + sy * h
+                        pixel = max(2, radius * 2.0)
+                        Rectangle(pos=(star_x, star_y), size=(pixel, pixel))
+                incoming_planet_x = incoming_x + w * (0.72 if next_level % 2 else 0.24)
+                incoming_planet_y = self.y + h * (0.79 if next_level % 3 else 0.67)
+                incoming_radius = min(w, h) * 0.105
+                planet_palette = ((0.05, 0.78, 0.72, 1), (0.40, 0.20, 0.95, 1),
+                                  (0.95, 0.25, 0.72, 1), (0.12, 0.48, 1, 1),
+                                  (0.28, 0.82, 0.95, 1))
+                Color(0.18, 0.10, 1, 0.18)
+                Ellipse(pos=(incoming_planet_x - incoming_radius * 1.65,
+                             incoming_planet_y - incoming_radius * 1.65),
+                        size=(incoming_radius * 3.3, incoming_radius * 3.3))
+                Color(*planet_palette[(next_level - 1) % len(planet_palette)])
+                Ellipse(pos=(incoming_planet_x - incoming_radius,
+                             incoming_planet_y - incoming_radius),
+                        size=(incoming_radius * 2, incoming_radius * 2))
 
             if self.screen in ("home", "settings", "over", "paused"):
                 cx, cy = self.x + w * 0.5, self.y + h * 0.27
