@@ -519,8 +519,10 @@ class StarDodger(FloatLayout):
             self.score += 25
             self.shower_time = 4.5
             if self.level % 5 == 0 and self.boss is None:
-                boss_hp = 12 + (self.level // 5 - 1) * 5
-                self.boss = [0.5, 0.80, boss_hp, boss_hp, 0.0, 0.0]
+                boss_index = self.level // 5 - 1
+                boss_hp = 12 + boss_index * 7
+                boss_type = boss_index % 5
+                self.boss = [0.5, 0.80, boss_hp, boss_hp, 0.0, 0.0, boss_type]
                 self.boss_notice = 3.0
                 self.boss_shots.clear()
 
@@ -557,14 +559,50 @@ class StarDodger(FloatLayout):
 
         if self.boss is not None:
             boss = self.boss
+            boss_type = int(boss[6]) if len(boss) > 6 else 0
             boss[4] += dt
-            boss[0] = 0.5 + math.sin(boss[4] * 0.9) * 0.31
+            boss[0] = 0.5 + math.sin(boss[4] * (0.72 + boss_type * 0.10)) * (0.25 if boss_type == 2 else 0.31)
             boss[5] += dt
-            if boss[5] >= max(0.48, 1.15 - self.level * 0.025):
+            attack_interval = max(0.34, 1.12 - (self.level // 5) * 0.075)
+            if boss[5] >= attack_interval:
                 boss[5] = 0.0
-                shot_speed = 0.25 + self.level * 0.012
-                for offset in (-0.18, 0.0, 0.18):
-                    self.boss_shots.append([boss[0], boss[1] - 0.08, offset, -shot_speed])
+                difficulty_boost = {"Easy": 0.88, "Normal": 1.0, "Hard": 1.14}[self.difficulty]
+                shot_speed = (0.25 + self.level * 0.012) * difficulty_boost
+                origin_y = boss[1] - 0.08
+                if boss_type == 0:
+                    # Scout Destroyer: one shot leads the player's current position.
+                    dx = max(-0.42, min(0.42, (self.player_x - boss[0]) * 0.72))
+                    self.boss_shots.append([boss[0], origin_y, dx, -shot_speed])
+                elif boss_type == 1:
+                    # Twin Blaster: a wide five-shot fan.
+                    for offset in (-0.34, -0.17, 0.0, 0.17, 0.34):
+                        self.boss_shots.append([boss[0], origin_y, offset, -shot_speed])
+                elif boss_type == 2:
+                    # Meteor Titan: drops a short, staggered meteor volley.
+                    for lane in (-0.20, 0.0, 0.20):
+                        self.asteroids.append([
+                            max(0.06, min(0.94, boss[0] + lane + uniform(-0.045, 0.045))),
+                            origin_y, uniform(1.05, 1.35), shot_speed * 0.82,
+                            randint(0, 3), uniform(0, math.tau)
+                        ])
+                elif boss_type == 3:
+                    # Void Reaper: rotating spiral volley.
+                    spin = boss[4] * 1.7
+                    for index in range(4):
+                        angle = spin + index * (math.tau / 4)
+                        self.boss_shots.append([
+                            boss[0], origin_y,
+                            math.cos(angle) * shot_speed * 0.78,
+                            -abs(math.sin(angle) * shot_speed * 0.55) - shot_speed * 0.42
+                        ])
+                else:
+                    # Galaxy Overlord: alternates a targeted blast and a dense fan.
+                    if int(boss[4] / 2.4) % 2 == 0:
+                        dx = max(-0.48, min(0.48, (self.player_x - boss[0]) * 0.82))
+                        self.boss_shots.append([boss[0], origin_y, dx, -shot_speed * 1.12])
+                    else:
+                        for offset in (-0.30, -0.15, 0.0, 0.15, 0.30):
+                            self.boss_shots.append([boss[0], origin_y, offset, -shot_speed * 0.92])
 
             for bullet in self.bullets[:]:
                 if abs(bullet[0] - boss[0]) < 0.13 and abs(bullet[1] - boss[1]) < 0.12:
@@ -661,7 +699,8 @@ class StarDodger(FloatLayout):
             self.game_over()
             return False
 
-        boss_text = f"   BOSS {self.boss[2]}/{self.boss[3]}" if self.boss else ""
+        boss_names = ("SCOUT DESTROYER", "TWIN BLASTER", "METEOR TITAN", "VOID REAPER", "GALAXY OVERLORD")
+        boss_text = f"   {boss_names[int(self.boss[6]) % 5]}  {self.boss[2]}/{self.boss[3]}" if self.boss else ""
         self.info.text = f"LEVEL {self.level}       ♥ {self.lives} LIVES{boss_text}\nSCORE {self.score}"
         if self.boss_notice > 0:
             self.hint.text = "⚠  BOSS INCOMING!"
@@ -1105,12 +1144,17 @@ class StarDodger(FloatLayout):
                     Ellipse(pos=(x - 1.8, y - 1.8), size=(3.6, 3.6))
 
                 if self.boss is not None:
-                    bx, by, hp, max_hp, phase, attack = self.boss
+                    bx, by, hp, max_hp, phase, attack = self.boss[:6]
+                    boss_type = int(self.boss[6]) % 5 if len(self.boss) > 6 else 0
+                    boss_glows = ((0.05, 0.72, 1.0), (1.0, 0.42, 0.12),
+                                  (0.92, 0.30, 0.12), (0.66, 0.24, 1.0),
+                                  (0.20, 1.0, 0.72))
+                    boss_glow = boss_glows[boss_type]
                     x, y = self.x + bx * w, self.y + by * h
-                    radius = min(w, h) * 0.105
+                    radius = min(w, h) * (0.105 if boss_type != 2 else 0.12)
                     pulse = 0.5 + 0.5 * math.sin(phase * 3.2)
-                    # Layered armored silhouette with swept side fins.
-                    Color(0.05, 0.72, 1.0, 0.13 + pulse * 0.10)
+                    # Each boss gets its own energy color and silhouette accents.
+                    Color(boss_glow[0], boss_glow[1], boss_glow[2], 0.13 + pulse * 0.10)
                     Ellipse(pos=(x - radius * 1.72, y - radius * 1.42),
                             size=(radius * 3.44, radius * 2.84))
                     Color(0.035, 0.10, 0.24, 1)
@@ -1120,11 +1164,11 @@ class StarDodger(FloatLayout):
                     Triangle(points=[x + radius * 0.35, y + radius * 0.35,
                                      x + radius * 1.65, y - radius * 0.38,
                                      x + radius * 1.12, y - radius * 0.92])
-                    Color(0.10, 0.30, 0.58, 1)
+                    Color(*(boss_glow + (1,)))
                     Triangle(points=[x, y + radius * 1.18,
                                      x - radius * 1.28, y - radius * 0.48,
                                      x + radius * 1.28, y - radius * 0.48])
-                    Color(0.22, 0.62, 0.86, 1)
+                    Color(min(1, boss_glow[0] * 1.25), min(1, boss_glow[1] * 1.25), min(1, boss_glow[2] * 1.25), 1)
                     Triangle(points=[x, y + radius * 0.96,
                                      x - radius * 0.78, y - radius * 0.42,
                                      x + radius * 0.78, y - radius * 0.42])
@@ -1139,10 +1183,10 @@ class StarDodger(FloatLayout):
                                      x - radius * 0.40, y - radius * 0.42,
                                      x + radius * 0.40, y - radius * 0.42])
                     # Bright central energy reactor with a breathing halo.
-                    Color(0.05, 0.78, 1, 0.20 + pulse * 0.18)
+                    Color(boss_glow[0], boss_glow[1], boss_glow[2], 0.20 + pulse * 0.18)
                     Ellipse(pos=(x - radius * 0.52, y - radius * 0.38),
                             size=(radius * 1.04, radius * 1.04))
-                    Color(0.06, 0.72, 1, 1)
+                    Color(*boss_glow, 1)
                     Ellipse(pos=(x - radius * 0.29, y - radius * 0.18),
                             size=(radius * 0.58, radius * 0.58))
                     Color(0.82, 0.98, 1, 1)
@@ -1159,7 +1203,7 @@ class StarDodger(FloatLayout):
                         Ellipse(pos=(x + radius * light_offset - 2,
                                      y - radius * 0.48), size=(4, 4))
                     # A rotating-looking energy shield ring, purely visual.
-                    Color(0.18, 0.82, 1, 0.34 + pulse * 0.22)
+                    Color(boss_glow[0], boss_glow[1], boss_glow[2], 0.34 + pulse * 0.22)
                     Line(ellipse=(x - radius * 1.52, y - radius * 0.72,
                                   radius * 3.04, radius * 1.52), width=1.4)
                     Color(0.9, 0.98, 1, 0.8)
@@ -1167,12 +1211,34 @@ class StarDodger(FloatLayout):
                                  x - radius * 1.05, y - radius * 0.78], width=2)
                     Line(points=[x + radius * 1.34, y - radius * 0.65,
                                  x + radius * 1.05, y - radius * 0.78], width=2)
+                    # Distinct physical features make each boss recognizable.
+                    if boss_type == 1:
+                        Color(1.0, 0.58, 0.16, 1)
+                        for side in (-1, 1):
+                            Ellipse(pos=(x + side * radius * 1.18 - radius * 0.22,
+                                         y - radius * 0.20), size=(radius * 0.44, radius * 0.44))
+                    elif boss_type == 2:
+                        Color(0.98, 0.42, 0.16, 1)
+                        for side in (-1, 1):
+                            Triangle(points=[x + side * radius * 0.55, y + radius * 0.55,
+                                             x + side * radius * 1.75, y + radius * 1.15,
+                                             x + side * radius * 1.18, y - radius * 0.25])
+                    elif boss_type == 3:
+                        Color(0.82, 0.50, 1, 0.85)
+                        Line(circle=(x, y, radius * 1.78), width=3)
+                        Line(circle=(x, y, radius * 1.42), width=1.5)
+                    elif boss_type == 4:
+                        Color(0.20, 1.0, 0.72, 1)
+                        for side in (-1, 1):
+                            Line(points=[x + side * radius * 0.42, y + radius * 0.75,
+                                         x + side * radius * 1.85, y + radius * 1.55,
+                                         x + side * radius * 1.45, y + radius * 0.15], width=3)
                     bar_w = w * 0.62
                     bar_x = self.x + (w - bar_w) * 0.5
                     bar_y = self.y + h * 0.91
                     Color(0.2, 0.08, 0.14, 0.95)
                     Rectangle(pos=(bar_x, bar_y), size=(bar_w, 9))
-                    Color(0.05, 0.72, 1, 1)
+                    Color(boss_glow[0], boss_glow[1], boss_glow[2], 1)
                     Rectangle(pos=(bar_x, bar_y), size=(bar_w * max(0, hp) / max_hp, 9))
                     if self.boss_notice > 0:
                         Color(1, 0.25, 0.35, 1)
