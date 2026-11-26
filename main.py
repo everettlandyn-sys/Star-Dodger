@@ -509,7 +509,7 @@ class StarDodger(FloatLayout):
         if self.boss is None and self.shower_time > 0 and randint(1, 7) == 1:
             self.asteroids.append([uniform(0.06, 0.94), 1.08, uniform(0.85, 1.25), speed * 1.35, randint(0, 3), uniform(0, math.tau)])
         if randint(1, max(18, 46 - self.level)) == 1:
-            self.stars.append([uniform(0.06, 0.94), 1.06])
+            self.stars.append([uniform(0.06, 0.94), 1.06, uniform(0, math.tau)])
 
         self.shot_time += dt
         if self.shot_time >= 0.42:
@@ -578,6 +578,9 @@ class StarDodger(FloatLayout):
 
         for star in self.stars[:]:
             star[1] -= dt * 0.3
+            if len(star) < 3:
+                star.append(0.0)
+            star[2] = (star[2] + dt * 5.5) % math.tau
             if star[1] < -0.08:
                 self.stars.remove(star)
             elif star[1] < 0.17 and abs(star[0] - self.player_x) < 0.075:
@@ -1007,10 +1010,26 @@ class StarDodger(FloatLayout):
 
                 for sx, sy, vx, vy in self.boss_shots:
                     x, y = self.x + sx * w, self.y + sy * h
-                    Color(1, 0.12, 0.38, 0.95)
-                    Ellipse(pos=(x - 7, y - 7), size=(14, 14))
-                    Color(1, 0.55, 0.72, 0.9)
-                    Ellipse(pos=(x - 3, y - 3), size=(6, 6))
+                    # Directional plasma trail, drawn behind the moving shot.
+                    trail_x, trail_y = -vx, -vy
+                    trail_len = min(w, h) * 0.075
+                    tail_x = x + trail_x * trail_len
+                    tail_y = y + trail_y * trail_len
+                    shot_tint = (1.0, 0.18, 0.34, 1) if vx < -0.04 else (
+                        (1.0, 0.48, 0.12, 1) if vx > 0.04 else (0.42, 0.72, 1.0, 1))
+                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.16)
+                    Line(points=[tail_x, tail_y, x, y], width=12)
+                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.42)
+                    Line(points=[tail_x, tail_y, x, y], width=5)
+                    # Layered halo, hot plasma shell, and white-hot center.
+                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.18)
+                    Ellipse(pos=(x - 15, y - 15), size=(30, 30))
+                    Color(shot_tint[0], shot_tint[1], shot_tint[2], 0.95)
+                    Ellipse(pos=(x - 8, y - 8), size=(16, 16))
+                    Color(1.0, 0.86, 0.82, 1)
+                    Ellipse(pos=(x - 4, y - 4), size=(8, 8))
+                    Color(1, 1, 1, 0.9)
+                    Ellipse(pos=(x - 1.8, y - 1.8), size=(3.6, 3.6))
 
                 if self.boss is not None:
                     bx, by, hp, max_hp, phase, attack = self.boss
@@ -1146,12 +1165,32 @@ class StarDodger(FloatLayout):
                     Ellipse(pos=(self.x + x * w - particle_size, self.y + y * h - particle_size),
                             size=(particle_size * 2, particle_size * 2))
 
-                for sx, sy in self.stars:
+                for star in self.stars:
+                    sx, sy = star[0], star[1]
+                    spin = star[2] if len(star) > 2 else 0.0
                     x, y = self.x + sx * w, self.y + sy * h
-                    Color(1, 0.78, 0.12, 0.2)
-                    Ellipse(pos=(x - 17, y - 3), size=(34, 34))
-                    Color(1, 0.84, 0.22, 1)
-                    Ellipse(pos=(x - 8, y + 1), size=(16, 16))
+                    # Gold collectible coin: spinning metallic edge, inset face,
+                    # engraved star, and a soft reflected highlight.
+                    coin_w = max(0.28, abs(math.cos(spin))) * 21
+                    Color(1.0, 0.62, 0.06, 0.16)
+                    Ellipse(pos=(x - 19, y - 19), size=(38, 38))
+                    Color(0.38, 0.19, 0.025, 1)
+                    Ellipse(pos=(x - coin_w - 2, y - 13), size=(coin_w * 2 + 4, 26))
+                    Color(1.0, 0.66, 0.08, 1)
+                    Ellipse(pos=(x - coin_w, y - 11), size=(coin_w * 2, 22))
+                    Color(1.0, 0.88, 0.34, 1)
+                    Line(ellipse=(x - coin_w * 0.78, y - 8.5,
+                                  coin_w * 1.56, 17), width=1.4)
+                    Color(0.72, 0.37, 0.025, 1)
+                    Ellipse(pos=(x - coin_w * 0.48, y - 5.5),
+                            size=(coin_w * 0.96, 11))
+                    Color(1.0, 0.96, 0.68, 1)
+                    Line(points=[x, y + 6, x + coin_w * 0.25, y,
+                                 x, y - 6, x - coin_w * 0.25, y, x, y + 6],
+                         width=1.8)
+                    Color(1, 1, 0.88, 0.85)
+                    Line(points=[x - coin_w * 0.35, y + 7,
+                                 x - coin_w * 0.12, y + 9], width=1.2)
 
                 # Collectible power-up capsules: cyan shield, gold score, green speed.
                 pickup_styles = (
