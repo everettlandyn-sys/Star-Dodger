@@ -67,10 +67,10 @@ class StarDodger(FloatLayout):
         self.help_button = self.make_button("HOW TO PLAY", (0.64, 0.075), 0.25)
         self.help_button.bind(on_press=self.show_help)
         self.help_text = self.make_label(
-            "DRAG LEFT OR RIGHT TO STEER\\n"
-            "DODGE METEORS AND ENEMY FIRE\\n"
-            "COLLECT STARS AND POWER-UPS\\n"
-            "DEFEAT A BOSS EVERY 5 LEVELS\\n"
+            "DRAG LEFT OR RIGHT TO STEER\n"
+            "DODGE METEORS AND ENEMY FIRE\n"
+            "COLLECT STARS AND POWER-UPS\n"
+            "DEFEAT A BOSS EVERY 5 LEVELS\n"
             "YOU HAVE 3 LIVES",
             15, 0.43
         )
@@ -183,6 +183,9 @@ class StarDodger(FloatLayout):
         self.set_visible(self.hint, True)
         self.set_visible(self.play_button, True)
         self.set_visible(self.settings_button, True)
+        self.set_visible(self.help_button, True)
+        self.set_visible(self.help_text, False)
+        self.set_visible(self.help_back_button, False)
         self.set_visible(self.retry_button, False)
         self.set_visible(self.home_button, False)
         self.set_visible(self.difficulty_label, False)
@@ -211,6 +214,9 @@ class StarDodger(FloatLayout):
         self.set_visible(self.hint, False)
         self.set_visible(self.play_button, False)
         self.set_visible(self.settings_button, False)
+        self.set_visible(self.help_button, False)
+        self.set_visible(self.help_text, False)
+        self.set_visible(self.help_back_button, False)
         self.set_visible(self.retry_button, False)
         self.set_visible(self.home_button, False)
         self.set_visible(self.difficulty_label, True)
@@ -319,7 +325,7 @@ class StarDodger(FloatLayout):
         self.set_visible(self.info, True)
         for hud in (self.hud_level, self.hud_lives, self.hud_score):
             self.set_visible(hud, False)
-        self.info.text = f"LEVEL {self.level}       {self.lives} LIVES\\nSCORE {self.score}"
+        self.info.text = f"LEVEL {self.level}       {self.lives} LIVES\nSCORE {self.score}"
         self.set_visible(self.hint, False)
         self.set_visible(self.resume_button, True)
         self.set_visible(self.pause_home_button, True)
