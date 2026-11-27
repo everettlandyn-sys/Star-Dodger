@@ -1365,31 +1365,102 @@ class StarDodger(FloatLayout):
                     Color(boss_glow[0], boss_glow[1], boss_glow[2], 0.13 + pulse * 0.10)
                     Ellipse(pos=(x - radius * 1.72, y - radius * 1.42),
                             size=(radius * 3.44, radius * 2.84))
-                    Color(0.035, 0.10, 0.24, 1)
-                    Triangle(points=[x - radius * 0.35, y + radius * 0.35,
-                                     x - radius * 1.65, y - radius * 0.38,
-                                     x - radius * 1.12, y - radius * 0.92])
-                    Triangle(points=[x + radius * 0.35, y + radius * 0.35,
-                                     x + radius * 1.65, y - radius * 0.38,
-                                     x + radius * 1.12, y - radius * 0.92])
-                    Color(*(boss_glow + (1,)))
-                    Triangle(points=[x, y + radius * 1.18,
-                                     x - radius * 1.28, y - radius * 0.48,
-                                     x + radius * 1.28, y - radius * 0.48])
-                    Color(min(1, boss_glow[0] * 1.25), min(1, boss_glow[1] * 1.25), min(1, boss_glow[2] * 1.25), 1)
-                    Triangle(points=[x, y + radius * 0.96,
-                                     x - radius * 0.78, y - radius * 0.42,
-                                     x + radius * 0.78, y - radius * 0.42])
-                    # Metallic edge lines and segmented armor plating.
-                    Color(0.55, 0.88, 1, 0.95)
-                    Line(points=[x, y + radius * 1.08,
-                                 x - radius * 1.45, y - radius * 0.42], width=1.8)
-                    Line(points=[x, y + radius * 1.08,
-                                 x + radius * 1.45, y - radius * 0.42], width=1.8)
-                    Color(0.015, 0.045, 0.12, 1)
-                    Triangle(points=[x, y + radius * 0.62,
-                                     x - radius * 0.40, y - radius * 0.42,
-                                     x + radius * 0.40, y - radius * 0.42])
+                    # Give each boss a genuinely different outer silhouette.
+                    # The shared core and HUD stay consistent across the five encounters.
+                    if boss_type == 0:
+                        # Scout Destroyer: a sharp, fast-looking arrowhead.
+                        Color(0.035, 0.10, 0.24, 1)
+                        Triangle(points=[x - radius * 0.35, y + radius * 0.35,
+                                         x - radius * 1.65, y - radius * 0.38,
+                                         x - radius * 1.12, y - radius * 0.92])
+                        Triangle(points=[x + radius * 0.35, y + radius * 0.35,
+                                         x + radius * 1.65, y - radius * 0.38,
+                                         x + radius * 1.12, y - radius * 0.92])
+                        Color(*(boss_glow + (1,)))
+                        Triangle(points=[x, y + radius * 1.18,
+                                         x - radius * 1.28, y - radius * 0.48,
+                                         x + radius * 1.28, y - radius * 0.48])
+                        Color(min(1, boss_glow[0] * 1.25), min(1, boss_glow[1] * 1.25), min(1, boss_glow[2] * 1.25), 1)
+                        Triangle(points=[x, y + radius * 0.96,
+                                         x - radius * 0.78, y - radius * 0.42,
+                                         x + radius * 0.78, y - radius * 0.42])
+                        Color(0.55, 0.88, 1, 0.95)
+                        Line(points=[x, y + radius * 1.08,
+                                     x - radius * 1.45, y - radius * 0.42], width=1.8)
+                        Line(points=[x, y + radius * 1.08,
+                                     x + radius * 1.45, y - radius * 0.42], width=1.8)
+                    elif boss_type == 1:
+                        # Twin Blaster: a rounded command hull with two side pods.
+                        Color(0.035, 0.10, 0.24, 1)
+                        Ellipse(pos=(x - radius * 1.28, y - radius * 0.62),
+                                size=(radius * 2.56, radius * 1.42))
+                        Color(*(boss_glow + (1,)))
+                        Ellipse(pos=(x - radius * 0.94, y - radius * 0.40),
+                                size=(radius * 1.88, radius * 1.02))
+                        Color(0.55, 0.88, 1, 0.95)
+                        Line(ellipse=(x - radius * 1.18, y - radius * 0.54,
+                                      radius * 2.36, radius * 1.26), width=1.8)
+                        Color(0.015, 0.045, 0.12, 1)
+                        Ellipse(pos=(x - radius * 0.34, y - radius * 0.27),
+                                size=(radius * 0.68, radius * 0.68))
+                    elif boss_type == 2:
+                        # Meteor Titan: a heavy, jagged rock-like armored diamond.
+                        Color(0.035, 0.10, 0.24, 1)
+                        Triangle(points=[x - radius * 0.25, y + radius * 1.28,
+                                         x - radius * 1.72, y + radius * 0.30,
+                                         x - radius * 1.05, y - radius * 0.98])
+                        Triangle(points=[x + radius * 0.25, y + radius * 1.28,
+                                         x + radius * 1.72, y + radius * 0.30,
+                                         x + radius * 1.05, y - radius * 0.98])
+                        Color(*(boss_glow + (1,)))
+                        Triangle(points=[x, y + radius * 1.20,
+                                         x - radius * 1.05, y + radius * 0.12,
+                                         x + radius * 1.05, y + radius * 0.12])
+                        Triangle(points=[x - radius * 1.05, y + radius * 0.12,
+                                         x, y - radius * 1.05,
+                                         x + radius * 1.05, y + radius * 0.12])
+                        Color(0.98, 0.72, 0.42, 0.95)
+                        Line(points=[x - radius * 0.72, y + radius * 0.18,
+                                     x - radius * 0.18, y - radius * 0.46,
+                                     x + radius * 0.30, y - radius * 0.05], width=2)
+                    elif boss_type == 3:
+                        # Void Reaper: narrow body with long hooked side blades.
+                        Color(0.035, 0.10, 0.24, 1)
+                        Triangle(points=[x - radius * 0.12, y + radius * 0.92,
+                                         x - radius * 1.78, y + radius * 0.62,
+                                         x - radius * 0.78, y - radius * 0.96])
+                        Triangle(points=[x + radius * 0.12, y + radius * 0.92,
+                                         x + radius * 1.78, y + radius * 0.62,
+                                         x + radius * 0.78, y - radius * 0.96])
+                        Color(*(boss_glow + (1,)))
+                        Triangle(points=[x, y + radius * 1.28,
+                                         x - radius * 0.54, y - radius * 0.82,
+                                         x + radius * 0.54, y - radius * 0.82])
+                        Color(0.82, 0.50, 1, 0.95)
+                        Line(points=[x - radius * 0.18, y + radius * 0.78,
+                                     x - radius * 0.78, y - radius * 0.45], width=2.2)
+                        Line(points=[x + radius * 0.18, y + radius * 0.78,
+                                     x + radius * 0.78, y - radius * 0.45], width=2.2)
+                    else:
+                        # Galaxy Overlord: a wide crown-shaped flagship silhouette.
+                        Color(0.035, 0.10, 0.24, 1)
+                        Triangle(points=[x, y + radius * 0.78,
+                                         x - radius * 1.72, y - radius * 0.52,
+                                         x + radius * 1.72, y - radius * 0.52])
+                        Color(*(boss_glow + (1,)))
+                        Triangle(points=[x, y + radius * 1.02,
+                                         x - radius * 1.12, y - radius * 0.48,
+                                         x + radius * 1.12, y - radius * 0.48])
+                        Triangle(points=[x - radius * 0.72, y + radius * 0.38,
+                                         x - radius * 1.20, y + radius * 1.48,
+                                         x - radius * 0.16, y + radius * 0.46])
+                        Triangle(points=[x + radius * 0.72, y + radius * 0.38,
+                                         x + radius * 1.20, y + radius * 1.48,
+                                         x + radius * 0.16, y + radius * 0.46])
+                        Color(0.72, 1.0, 0.92, 0.95)
+                        Line(points=[x - radius * 1.35, y - radius * 0.42,
+                                     x, y + radius * 0.92,
+                                     x + radius * 1.35, y - radius * 0.42], width=2)
                     # Bright central energy reactor with a breathing halo.
                     Color(boss_glow[0], boss_glow[1], boss_glow[2], 0.20 + pulse * 0.18)
                     Ellipse(pos=(x - radius * 0.52, y - radius * 0.38),
